@@ -8,7 +8,7 @@ const PeriodPostsList = ({ payload, selectedPostIds, onToggleSelect, onOpenVideo
   const itemsPerPage = 10;
   const listRef = useRef(null);
 
-  // Reset page when payload changes
+  // Reset page when payload changes (only when the selected period changes)
   useEffect(() => {
     setCurrentPage(1);
     if (listRef.current) {
@@ -16,7 +16,7 @@ const PeriodPostsList = ({ payload, selectedPostIds, onToggleSelect, onOpenVideo
         listRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     }
-  }, [payload]);
+  }, [payload?.label]);
 
   if (!payload || !payload.posts || payload.posts.length === 0) return null;
 
@@ -47,14 +47,15 @@ const PeriodPostsList = ({ payload, selectedPostIds, onToggleSelect, onOpenVideo
       try { return JSON.parse(clean); } catch(e) { return null; }
   };
 
-  const handleAnalyzeVideo = async (postId, hasAnalysis) => {
+  const handleAnalyzeVideo = async (postId, hasAnalysis, aiData) => {
     if (hasAnalysis && onOpenVideoModal) {
         onOpenVideoModal(postId);
         return;
     }
     try {
+      const forceRefresh = aiData && aiData.error ? true : false;
       // Just fire and forget for single video (async background)
-      const result = await socialAnalyticsApi.analyzeVideoAi(postId);
+      const result = await socialAnalyticsApi.analyzeVideoAi(postId, forceRefresh);
       if (result.status === 'already_completed' || (result.hooking_analysis)) {
         if (onOpenVideoModal) {
             onOpenVideoModal(postId);
@@ -154,7 +155,7 @@ const PeriodPostsList = ({ payload, selectedPostIds, onToggleSelect, onOpenVideo
 
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <button 
-                      onClick={() => handleAnalyzeVideo(post.id, hasAnalysis)}
+                      onClick={() => handleAnalyzeVideo(post.id, hasAnalysis, aiData)}
                       style={{
                         flex: 1,
                         padding: '0.75rem',

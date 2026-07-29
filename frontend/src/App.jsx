@@ -9,6 +9,7 @@ import ChannelAiModal from './components/ChannelAiModal';
 import HomeDashboard from './components/HomeDashboard';
 import JobProgressToast from './components/JobProgressToast';
 import VideoAiModal from './components/VideoAiModal';
+import CompletedAiListModal from './components/CompletedAiListModal';
 import { socialAnalyticsApi } from './services/api';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
   const [platform, setPlatform] = useState('instagram');
   const [showModal, setShowModal] = useState(false);
   const [showChannelAiModal, setShowChannelAiModal] = useState(false);
+  const [showCompletedAiModal, setShowCompletedAiModal] = useState(false);
   const [searchQueryForModal, setSearchQueryForModal] = useState('');
 
   // Video AI Modal state
@@ -302,6 +304,27 @@ function App() {
                   >
                       ✨ AI 채널 총평 분석
                   </button>
+                  <button 
+                      onClick={() => setShowCompletedAiModal(true)}
+                      style={{
+                          width: '100%',
+                          padding: '0.8rem 1.2rem',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(139, 92, 246, 0.5)',
+                          background: 'rgba(139, 92, 246, 0.1)',
+                          color: '#c4b5fd',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem',
+                          marginTop: '0.5rem',
+                          transition: 'all 0.2s'
+                      }}
+                  >
+                      💡 AI 분석 완료된 영상 모아보기
+                  </button>
                 </div>
               </div>
               <div>
@@ -497,6 +520,14 @@ function App() {
                 <span style={{ fontSize: '0.85rem' }}>일괄 분석</span>
               </button>
             </div>
+        )}
+
+        {showCompletedAiModal && data && (
+            <CompletedAiListModal
+                posts={data.recentPosts}
+                onClose={() => setShowCompletedAiModal(false)}
+                onOpenResultModal={handleOpenVideoModal}
+            />
         )}
 
         <VideoAiModal 

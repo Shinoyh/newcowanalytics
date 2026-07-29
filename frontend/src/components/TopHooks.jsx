@@ -21,13 +21,14 @@ const TopHooks = ({ posts, selectedPostIds, onToggleSelect, onOpenVideoModal }) 
       try { return JSON.parse(clean); } catch(e) { return null; }
   };
 
-  const handleAnalyzeVideo = async (postId, hasAnalysis) => {
+  const handleAnalyzeVideo = async (postId, hasAnalysis, aiData) => {
     if (hasAnalysis && onOpenVideoModal) {
         onOpenVideoModal(postId);
         return;
     }
     try {
-      const result = await socialAnalyticsApi.analyzeVideoAi(postId);
+      const forceRefresh = aiData && aiData.error ? true : false;
+      const result = await socialAnalyticsApi.analyzeVideoAi(postId, forceRefresh);
       if (result.status === 'already_completed' || (result.hooking_analysis)) {
         if (onOpenVideoModal) {
             onOpenVideoModal(postId);
@@ -93,7 +94,7 @@ const TopHooks = ({ posts, selectedPostIds, onToggleSelect, onOpenVideoModal }) 
             
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <button 
-                  onClick={() => handleAnalyzeVideo(post.id, hasAnalysis)}
+                  onClick={() => handleAnalyzeVideo(post.id, hasAnalysis, aiData)}
                   style={{
                     flex: 1,
                     padding: '0.75rem',

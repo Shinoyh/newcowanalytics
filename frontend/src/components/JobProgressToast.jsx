@@ -4,6 +4,7 @@ import { socialAnalyticsApi } from '../services/api';
 function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsChange, onJobComplete, posts = [] }) {
     const [jobStatuses, setJobStatuses] = useState({});
     const [isClosed, setIsClosed] = useState(false);
+    const [isMinimized, setIsMinimized] = useState(false);
     const prevActiveCount = React.useRef(0);
     const prevChannelAiLoading = React.useRef(false);
     
@@ -46,6 +47,7 @@ function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsC
     useEffect(() => {
         if (activeJobs.length > prevActiveCount.current || (isChannelAiLoading && !prevChannelAiLoading.current)) {
             setIsClosed(false);
+            setIsMinimized(false);
         }
         prevActiveCount.current = activeJobs.length;
         prevChannelAiLoading.current = isChannelAiLoading;
@@ -110,23 +112,33 @@ function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsC
                     <div className="loading-spinner" style={{ width: '12px', height: '12px', borderWidth: '2px', display: activeJobs.some(j => j[1] !== 'COMPLETED' && j[1] !== 'FAILED') ? 'block' : 'none' }}></div>
                     AI 작업 진행 상황
                 </h4>
-                <button 
-                    onClick={() => {
-                        setIsClosed(true);
-                        // Clear finished jobs from backend so they don't reappear
-                        activeJobs.forEach(([postIdStr, status]) => {
-                            if (status === 'COMPLETED' || status === 'FAILED' || status === 'already_completed') {
-                                socialAnalyticsApi.clearAiJobStatus(postIdStr);
-                            }
-                        });
-                    }}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.2rem' }}
-                >
-                    &times;
-                </button>
+                <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                    <button 
+                        onClick={() => setIsMinimized(!isMinimized)}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.4rem', padding: '0 0.4rem', lineHeight: '1' }}
+                    >
+                        {isMinimized ? '+' : '−'}
+                    </button>
+                    <button 
+                        onClick={() => {
+                            setIsClosed(true);
+                            // Clear finished jobs from backend so they don't reappear
+                            activeJobs.forEach(([postIdStr, status]) => {
+                                if (status === 'COMPLETED' || status === 'FAILED' || status === 'already_completed') {
+                                    socialAnalyticsApi.clearAiJobStatus(postIdStr);
+                                }
+                            });
+                        }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.2rem', lineHeight: '1' }}
+                    >
+                        &times;
+                    </button>
+                </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                {activeJobs.map(([postIdStr, status]) => {
+            
+            {!isMinimized && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                    {activeJobs.map(([postIdStr, status]) => {
                     const post = posts.find(p => p.id?.toString() === postIdStr.toString());
                     const captionStr = post && post.caption ? post.caption : '';
                     const title = captionStr 
@@ -171,6 +183,7 @@ function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsC
                     </div>
                 )}
             </div>
+            )}
         </div>
     );
 }
