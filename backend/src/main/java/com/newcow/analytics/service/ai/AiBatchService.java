@@ -35,6 +35,29 @@ public class AiBatchService {
         }
     }
 
+    private void handleFailure(SocialMediaPost post, Exception e) {
+        Long postId = post.getId();
+        String errMsg = e.getMessage() != null ? e.getMessage() : e.toString();
+        
+        String translatedMsg;
+        if (errMsg.contains("403 Forbidden") || errMsg.contains("access denied") || errMsg.contains("Sign in to confirm you’re not a bot")) {
+            translatedMsg = "[ERR_YOUTUBE_BLOCK] 유튜브 정책(연령 제한 또는 차단)에 의해 영상 추출이 거부되었습니다.";
+        } else if (errMsg.contains("429") || errMsg.contains("quota") || errMsg.contains("Rate limit")) {
+            translatedMsg = "[ERR_QUOTA_EXCEEDED] 구글 AI 일일 사용량을 초과했거나 요청이 너무 많습니다.";
+        } else if (errMsg.contains("Intro or audio files not found")) {
+            translatedMsg = "[ERR_DOWNLOAD_FAIL] 영상 다운로드 단계에서 파일을 정상적으로 받아오지 못했습니다.";
+        } else {
+            translatedMsg = "[ERR_UNKNOWN] 분석 중 오류 발생: " + errMsg.substring(0, Math.min(errMsg.length(), 80));
+        }
+        
+        String errorJson = "{\"error\": \"" + translatedMsg.replace("\"", "\\\"").replace("\n", " ") + "\"}";
+        post.setAiAnalysisResult(errorJson);
+        postRepository.save(post);
+        
+        jobStatusMap.put(postId, "FAILED");
+        log.error("AI Analysis Failed for post {}: {}", postId, errMsg);
+    }
+
     public void submitVideoAnalysis(SocialMediaPost post) {
         Long postId = post.getId();
         
@@ -72,13 +95,11 @@ public class AiBatchService {
                             jobStatusMap.put(postId, "COMPLETED");
                             log.info("Successfully completed AI analysis for post {}", postId);
                         } else {
-                            jobStatusMap.put(postId, "FAILED");
-                            log.warn("AI analysis returned invalid JSON or error for post {}. Response: {}", postId, resultJson);
+                            handleFailure(post, new RuntimeException(resultJson != null ? resultJson : "Null response"));
                         }
                         
                     } catch (Exception e) {
-                        log.error("Failed during analyze step for post {}", postId, e);
-                        jobStatusMap.put(postId, "FAILED");
+                        handleFailure(post, e);
                     } finally {
                         try {
                             // API 요청 몰림 방지 (구글 429 에러 방지용 2초 대기)
@@ -90,8 +111,7 @@ public class AiBatchService {
                 });
                 
             } catch (Exception e) {
-                log.error("Failed during download step for post {}", postId, e);
-                jobStatusMap.put(postId, "FAILED");
+                handleFailure(post, e);
             }
         });
     }

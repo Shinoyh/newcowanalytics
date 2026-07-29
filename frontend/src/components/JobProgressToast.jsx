@@ -60,7 +60,7 @@ function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsC
             case 'WAITING_ANALYZE': return 'AI 분석 대기 중... 🤖';
             case 'ANALYZING': return 'AI 심층 분석 중... 🧠';
             case 'COMPLETED': return '분석 완료! ✨ (클릭하여 확인)';
-            case 'FAILED': return '오류 발생 ❌';
+            case 'FAILED': return '오류 발생 ❌ (클릭하여 원인 보기)';
             case 'already_completed': return '이미 분석 완료됨 ✨ (클릭하여 확인)';
             case 'queued': return '큐 대기 중... ⏳';
             default: return status;
@@ -74,7 +74,7 @@ function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsC
     };
 
     const handleJobClick = (postIdStr, status) => {
-        if (status === 'COMPLETED' || status === 'already_completed') {
+        if (status === 'COMPLETED' || status === 'already_completed' || status === 'FAILED') {
             if (onOpenResultModal) {
                 onOpenResultModal(parseInt(postIdStr, 10));
             }
@@ -141,8 +141,8 @@ function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsC
                                 padding: '0.6rem',
                                 borderRadius: '8px',
                                 fontSize: '0.85rem',
-                                cursor: (status === 'COMPLETED' || status === 'already_completed') ? 'pointer' : 'default',
-                                border: (status === 'COMPLETED' || status === 'already_completed') ? '1px solid var(--accent-success)' : '1px solid transparent',
+                                cursor: (status === 'COMPLETED' || status === 'already_completed' || status === 'FAILED') ? 'pointer' : 'default',
+                                border: (status === 'COMPLETED' || status === 'already_completed') ? '1px solid var(--accent-success)' : (status === 'FAILED' ? '1px solid #ef4444' : '1px solid transparent'),
                                 transition: 'all 0.2s'
                             }}
                         >
