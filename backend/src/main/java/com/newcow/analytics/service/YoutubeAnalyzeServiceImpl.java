@@ -59,27 +59,39 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
         try {
             // Only fetch channel and playlist ID if not cached in DB
             if (channelId == null || uploadsPlaylistId == null) {
-                // 1. Search channel ID by handle
-                String searchUrl = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q="
+                // 1. Try exact match using forHandle API (Best practice for @usernames)
+                String exactUrl = "https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails&forHandle="
                         + cleanUsername + "&key=" + apiKey;
-                ResponseEntity<String> searchResponse = restTemplate.getForEntity(searchUrl, String.class);
-                JsonNode searchRoot = objectMapper.readTree(searchResponse.getBody());
-                if (searchRoot.path("items").isArray() && searchRoot.path("items").size() > 0) {
-                    JsonNode firstItem = searchRoot.path("items").get(0);
-                    channelId = firstItem.path("snippet").path("channelId").asText();
+                ResponseEntity<String> exactResponse = restTemplate.getForEntity(exactUrl, String.class);
+                JsonNode exactRoot = objectMapper.readTree(exactResponse.getBody());
+                
+                if (exactRoot.path("items").isArray() && exactRoot.path("items").size() > 0) {
+                    JsonNode firstItem = exactRoot.path("items").get(0);
+                    channelId = firstItem.path("id").asText();
                     channelTitle = firstItem.path("snippet").path("title").asText();
                     profileUrl = firstItem.path("snippet").path("thumbnails").path("high").path("url").asText();
+                    uploadsPlaylistId = firstItem.path("contentDetails").path("relatedPlaylists").path("uploads").asText();
                 } else {
-                    throw new RuntimeException("Channel not found for username: " + username);
+                    // 2. Fallback to fuzzy search if exact handle doesn't exist
+                    String searchUrl = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q="
+                            + cleanUsername + "&key=" + apiKey;
+                    ResponseEntity<String> searchResponse = restTemplate.getForEntity(searchUrl, String.class);
+                    JsonNode searchRoot = objectMapper.readTree(searchResponse.getBody());
+                    if (searchRoot.path("items").isArray() && searchRoot.path("items").size() > 0) {
+                        JsonNode searchItem = searchRoot.path("items").get(0);
+                        channelId = searchItem.path("snippet").path("channelId").asText();
+                        channelTitle = searchItem.path("snippet").path("title").asText();
+                        profileUrl = searchItem.path("snippet").path("thumbnails").path("high").path("url").asText();
+                        
+                        // Then get contentDetails for the found channel
+                        String contentUrl = "https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=" + channelId + "&key=" + apiKey;
+                        ResponseEntity<String> contentResponse = restTemplate.getForEntity(contentUrl, String.class);
+                        JsonNode contentRoot = objectMapper.readTree(contentResponse.getBody());
+                        uploadsPlaylistId = contentRoot.path("items").get(0).path("contentDetails").path("relatedPlaylists").path("uploads").asText();
+                    } else {
+                        throw new RuntimeException("Channel not found for username: " + username);
+                    }
                 }
-
-                // 2. Get uploads playlist ID
-                String channelUrl = "https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=" + channelId
-                        + "&key=" + apiKey;
-                ResponseEntity<String> channelResponse = restTemplate.getForEntity(channelUrl, String.class);
-                JsonNode channelRoot = objectMapper.readTree(channelResponse.getBody());
-                uploadsPlaylistId = channelRoot.path("items").get(0).path("contentDetails").path("relatedPlaylists")
-                        .path("uploads").asText();
 
                 // Update account with fetched IDs
                 account.setPlatformAccountId(channelId);

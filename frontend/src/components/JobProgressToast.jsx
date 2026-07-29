@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { socialAnalyticsApi } from '../services/api';
 
-function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsChange, posts = [] }) {
+function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsChange, onJobComplete, posts = [] }) {
     const [jobStatuses, setJobStatuses] = useState({});
     const [isClosed, setIsClosed] = useState(false);
     const prevActiveCount = React.useRef(0);
@@ -11,6 +11,16 @@ function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsC
         const fetchStatus = async () => {
             try {
                 const statuses = await socialAnalyticsApi.getAiJobStatus();
+                
+                // Detect newly completed jobs
+                if (onJobComplete) {
+                    Object.entries(statuses).forEach(([postId, status]) => {
+                        if (status === 'COMPLETED' && jobStatuses[postId] !== 'COMPLETED') {
+                            onJobComplete(postId);
+                        }
+                    });
+                }
+
                 setJobStatuses(statuses);
             } catch (err) {
                 console.error("Failed to fetch job statuses", err);
@@ -20,7 +30,7 @@ function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsC
         const interval = setInterval(fetchStatus, 2000);
         fetchStatus(); // initial fetch
         return () => clearInterval(interval);
-    }, []);
+    }, [jobStatuses, onJobComplete]);
 
     const activeJobs = Object.entries(jobStatuses).filter(([_, status]) => 
         status !== 'NONE' && status !== 'cleared'

@@ -88,6 +88,28 @@ function App() {
       }
   };
 
+  const handleJobComplete = async (postId) => {
+      try {
+          // Fetch the AI result for this completed job
+          const result = await socialAnalyticsApi.analyzeVideoAi(postId);
+          if (result && result.hooking_analysis) {
+              setData(prevData => {
+                  if (!prevData) return prevData;
+                  const newPosts = prevData.recentPosts.map(p => {
+                      if (p.id == postId) {
+                          // Update aiAnalysisResult string so the 3-line summary appears
+                          return { ...p, aiAnalysisResult: JSON.stringify(result) };
+                      }
+                      return p;
+                  });
+                  return { ...prevData, recentPosts: newPosts };
+              });
+          }
+      } catch(e) {
+          console.error("Failed to fetch updated AI result for UI", e);
+      }
+  };
+
   const handleSearch = async (username, isFromSuggestion = false) => {
     if (!username || username.trim() === '') {
         alert("검색어를 입력해주세요.");
@@ -323,7 +345,10 @@ function App() {
 
             {selectedPeriod && (
                 <PeriodPostsList 
-                    payload={selectedPeriod} 
+                    payload={{
+                        ...selectedPeriod,
+                        posts: selectedPeriod.posts.map(sp => data.recentPosts.find(p => p.id === sp.id) || sp)
+                    }} 
                     selectedPostIds={selectedPostIds} 
                     onToggleSelect={handleToggleSelect}
                     onOpenVideoModal={handleOpenVideoModal}
@@ -384,6 +409,7 @@ function App() {
             onOpenResultModal={handleOpenVideoModal} 
             isChannelAiLoading={isAiLoading} 
             onActiveJobsChange={setIsAnyJobActive}
+            onJobComplete={handleJobComplete}
             posts={data?.recentPosts || []}
         />
 

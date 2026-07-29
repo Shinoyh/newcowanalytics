@@ -5,8 +5,12 @@ function VideoAiModal({ isOpen, onClose, post, aiResult }) {
     if (!isOpen || !post || !aiResult) return null;
 
     let parsedResult = aiResult;
+    let parseFailed = false;
+    let rawText = "";
+
     if (typeof aiResult === 'string') {
         let cleanResult = aiResult.trim();
+        rawText = cleanResult;
         try {
             const jsonStart = cleanResult.indexOf('{');
             const jsonEnd = cleanResult.lastIndexOf('}');
@@ -19,6 +23,7 @@ function VideoAiModal({ isOpen, onClose, post, aiResult }) {
             if (aiResult === '{"status":"queued"}') {
                 return null; // Don't show modal for queued status
             }
+            parseFailed = true;
         }
     }
 
@@ -32,6 +37,25 @@ function VideoAiModal({ isOpen, onClose, post, aiResult }) {
                     </div>
                     <div className="modal-body">
                         <p style={{ color: 'var(--accent-primary)' }}>{parsedResult.error}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (parseFailed) {
+        return (
+            <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1000 }}>
+                <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+                    <div className="modal-header">
+                        <h2>⚠️ AI 응답 형식 오류 (JSON 파싱 실패)</h2>
+                        <button className="modal-close-btn" onClick={onClose}>&times;</button>
+                    </div>
+                    <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <p style={{ color: 'var(--text-secondary)' }}>AI가 분석 결과를 반환했지만, 정해진 규격(JSON)을 맞추지 않아 화면에 예쁘게 그릴 수 없습니다. 아래 원본 데이터를 확인해주세요.</p>
+                        <pre style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', overflowX: 'auto', color: '#a78bfa', fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>
+                            {rawText}
+                        </pre>
                     </div>
                 </div>
             </div>

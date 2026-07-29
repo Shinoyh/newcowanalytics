@@ -70,6 +70,7 @@ If the person in the video is a globally or nationally recognized public figure,
 
 ### LANGUAGE REQUIREMENT ###
 CRITICAL: All string values, descriptions, summaries, and feedback inside the JSON object MUST be written in fluent and natural Korean. The JSON keys must remain in English.
+IMPORTANT: If you use double quotes inside a string value, you MUST escape them properly like this: \\" to prevent JSON parsing errors.
 
 ### OUTPUT JSON SCHEMA ###
 {
