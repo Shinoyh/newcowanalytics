@@ -48,5 +48,23 @@ export const socialAnalyticsApi = {
     analyzeChannelAi: async (platform, username, forceRefresh = false) => {
         const response = await api.post(`/ai/analyze/channel/${platform}/${username}?forceRefresh=${forceRefresh}`);
         return response.data;
+    },
+
+    // Batch analyze videos
+    batchAnalyzeVideos: async (postIds) => {
+        const response = await api.post(`/ai/analyze/batch`, postIds);
+        return response.data;
+    },
+
+    // Get job status for async AI analysis
+    getAiJobStatus: async () => {
+        const response = await api.get(`/ai/analyze/status`);
+        return response.data;
+    },
+
+    // Clear completed/failed job status
+    clearAiJobStatus: async (postId) => {
+        const response = await api.delete(`/ai/analyze/status/${postId}`);
+        return response.data;
     }
 };

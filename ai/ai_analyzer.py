@@ -58,7 +58,7 @@ def wait_for_files_active(client, files):
         if f.state.name == 'FAILED':
             raise Exception("File processing failed")
 
-def analyze_video(api_key, video_id, video_type, metadata_json_str):
+def analyze_video(api_key, video_id, video_type, metadata_json_str, step):
     client = genai.Client(api_key=api_key)
     
     config = types.GenerateContentConfig(
@@ -111,26 +111,42 @@ CRITICAL: All string values, descriptions, summaries, and feedback inside the JS
     uploaded_files = []
 
     try:
-        if video_type.upper() == "SHORT":
-            vid_file = download_short_video(video_id)
-            print(f"Uploading {vid_file}...", file=sys.stderr)
-            gemini_file = client.files.upload(file=vid_file)
-            uploaded_files.append(gemini_file)
-            wait_for_files_active(client, uploaded_files)
-            prompt += "Please analyze the attached short-form video in its entirety."
-            response = client.models.generate_content(model='gemini-3.5-flash', contents=[uploaded_files[0], prompt], config=config)
-        else:
-            intro_file, audio_file = download_long_video_assets(video_id)
-            print(f"Uploading {intro_file} and {audio_file}...", file=sys.stderr)
-            gemini_intro = client.files.upload(file=intro_file)
-            gemini_audio = client.files.upload(file=audio_file)
-            uploaded_files.extend([gemini_intro, gemini_audio])
-            wait_for_files_active(client, uploaded_files)
-            prompt += "Please analyze the attached video. The first file is the first 2 minutes of the video (intro). The second file is the audio track for the entire 30+ minute video. Use the intro video to analyze the visual hook, and the full audio to understand the complete context and storyline."
-            response = client.models.generate_content(model='gemini-3.5-flash', contents=[uploaded_files[0], uploaded_files[1], prompt], config=config)
+        if step == "download" or step == "all":
+            if video_type.upper() == "SHORT":
+                download_short_video(video_id)
+            else:
+                download_long_video_assets(video_id)
+                
+            if step == "download":
+                print(json.dumps({"status": "downloaded"}))
+                return
 
-        clean_json = response.text.replace('```json', '').replace('```', '').strip()
-        print(clean_json)
+        if step == "analyze" or step == "all":
+            if video_type.upper() == "SHORT":
+                vid_file = f"{video_id}_short.mp4"
+                if not os.path.exists(vid_file):
+                    raise Exception(f"File {vid_file} not found. Did download step run?")
+                print(f"Uploading {vid_file}...", file=sys.stderr)
+                gemini_file = client.files.upload(file=vid_file)
+                uploaded_files.append(gemini_file)
+                wait_for_files_active(client, uploaded_files)
+                prompt += "Please analyze the attached short-form video in its entirety."
+                response = client.models.generate_content(model='gemini-3.5-flash', contents=[uploaded_files[0], prompt], config=config)
+            else:
+                intro_file = f"{video_id}_intro.mp4"
+                audio_file = f"{video_id}_full.mp3"
+                if not os.path.exists(intro_file) or not os.path.exists(audio_file):
+                    raise Exception("Intro or audio files not found. Did download step run?")
+                print(f"Uploading {intro_file} and {audio_file}...", file=sys.stderr)
+                gemini_intro = client.files.upload(file=intro_file)
+                gemini_audio = client.files.upload(file=audio_file)
+                uploaded_files.extend([gemini_intro, gemini_audio])
+                wait_for_files_active(client, uploaded_files)
+                prompt += "Please analyze the attached video. The first file is the first 2 minutes of the video (intro). The second file is the audio track for the entire 30+ minute video. Use the intro video to analyze the visual hook, and the full audio to understand the complete context and storyline."
+                response = client.models.generate_content(model='gemini-3.5-flash', contents=[uploaded_files[0], uploaded_files[1], prompt], config=config)
+
+            clean_json = response.text.replace('```json', '').replace('```', '').strip()
+            print(clean_json)
         
     finally:
         # Cleanup uploaded files from Gemini
@@ -140,12 +156,13 @@ CRITICAL: All string values, descriptions, summaries, and feedback inside the JS
             except Exception as e:
                 print(f"Failed to delete {f.name}: {e}", file=sys.stderr)
                 
-        # Cleanup local files
-        if video_type.upper() == "SHORT":
-            if os.path.exists(f"{video_id}_short.mp4"): os.remove(f"{video_id}_short.mp4")
-        else:
-            if os.path.exists(f"{video_id}_intro.mp4"): os.remove(f"{video_id}_intro.mp4")
-            if os.path.exists(f"{video_id}_full.mp3"): os.remove(f"{video_id}_full.mp3")
+        # Cleanup local files ONLY during 'analyze' or 'all', not 'download'
+        if step == "analyze" or step == "all":
+            if video_type.upper() == "SHORT":
+                if os.path.exists(f"{video_id}_short.mp4"): os.remove(f"{video_id}_short.mp4")
+            else:
+                if os.path.exists(f"{video_id}_intro.mp4"): os.remove(f"{video_id}_intro.mp4")
+                if os.path.exists(f"{video_id}_full.mp3"): os.remove(f"{video_id}_full.mp3")
 
 def analyze_channel(api_key, metadata_json_str):
     client = genai.Client(api_key=api_key)
@@ -190,6 +207,7 @@ if __name__ == "__main__":
     parser.add_argument("--video_id", required=False)
     parser.add_argument("--type", required=False, choices=["short", "long"])
     parser.add_argument("--metadata_base64", required=True)
+    parser.add_argument("--step", required=False, choices=["download", "analyze", "all"], default="all")
     
     args = parser.parse_args()
     
@@ -200,7 +218,7 @@ if __name__ == "__main__":
             if not args.video_id or not args.type:
                 print('{"error": "video_id and type are required for video mode"}')
                 sys.exit(0)
-            analyze_video(args.api_key, args.video_id, args.type, metadata_json_str)
+            analyze_video(args.api_key, args.video_id, args.type, metadata_json_str, args.step)
         elif args.mode == "channel":
             analyze_channel(args.api_key, metadata_json_str)
     except Exception as e:

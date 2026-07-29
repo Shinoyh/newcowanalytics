@@ -161,59 +161,69 @@ const EngagementChart = ({ data, onChartClick }) => {
             <div className="chart-container" style={{ flex: 1, minHeight: '350px' }}>
                 {processedData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart 
-                            data={processedData} 
-                            margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
-                            onClick={(e) => {
-                                if (e && e.activePayload && onChartClick) {
-                                    onChartClick(e.activePayload[0].payload);
-                                }
-                            }}
-                            style={{ cursor: 'pointer' }}
-                        >
-                            <defs>
-                                <linearGradient id="colorEngagement" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                            <XAxis 
-                                dataKey="label" 
-                                stroke="#a0aec0" 
-                                tick={{ fill: '#a0aec0', fontSize: 12 }}
-                                tickLine={false}
-                                axisLine={false}
-                                minTickGap={20}
-                            />
-                            <YAxis 
-                                stroke="#a0aec0" 
-                                tick={{ fill: '#a0aec0', fontSize: 12 }}
-                                tickLine={false}
-                                axisLine={false}
-                                tickFormatter={(value) => value >= 1000 ? `${(value/1000).toFixed(1)}k` : value}
-                            />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area 
-                                type="monotone" 
-                                dataKey="engagement" 
-                                stroke="#3b82f6" 
-                                strokeWidth={3}
-                                fillOpacity={1} 
-                                fill="url(#colorEngagement)" 
-                                activeDot={{ 
-                                    r: 6, 
-                                    fill: '#3b82f6', 
-                                    stroke: '#fff', 
-                                    strokeWidth: 2,
-                                    onClick: (e, payload) => {
-                                        if (payload && payload.payload && onChartClick) {
-                                            onChartClick(payload.payload);
-                                        }
-                                    }
-                                }}
-                            />
-                        </AreaChart>
+                            <AreaChart 
+                                data={processedData} 
+                                margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+                            >
+                                <defs>
+                                    <linearGradient id="colorEngagement" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                <XAxis 
+                                    dataKey="label" 
+                                    stroke="#a0aec0" 
+                                    tick={{ fill: '#a0aec0', fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    minTickGap={20}
+                                />
+                                <YAxis 
+                                    stroke="#a0aec0" 
+                                    tick={{ fill: '#a0aec0', fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(value) => value >= 1000 ? `${(value/1000).toFixed(1)}k` : value}
+                                />
+                                <Tooltip 
+                                    content={<CustomTooltip />} 
+                                    cursor={{ stroke: 'rgba(59, 130, 246, 0.5)', strokeWidth: 2, strokeDasharray: '3 3' }} 
+                                />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="engagement" 
+                                    stroke="#3b82f6" 
+                                    strokeWidth={3}
+                                    fillOpacity={1} 
+                                    fill="url(#colorEngagement)" 
+                                    activeDot={(props) => {
+                                        const { cx, cy, payload } = props;
+                                        return (
+                                            <g>
+                                                {/* Actual visible dot */}
+                                                <circle cx={cx} cy={cy} r={6} fill="#3b82f6" stroke="#fff" strokeWidth={2} />
+                                                {/* Invisible clickable area spanning the vertical column */}
+                                                <rect 
+                                                    x={cx - 30} 
+                                                    y={-100} 
+                                                    width={60} 
+                                                    height={1000} 
+                                                    fill="transparent" 
+                                                    style={{ cursor: 'pointer' }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (payload && onChartClick) {
+                                                            onChartClick(payload);
+                                                        }
+                                                    }}
+                                                />
+                                            </g>
+                                        );
+                                    }}
+                                />
+                            </AreaChart>
                     </ResponsiveContainer>
                 ) : (
                     <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: '#a0aec0' }}>

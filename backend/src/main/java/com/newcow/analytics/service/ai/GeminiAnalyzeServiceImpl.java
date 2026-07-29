@@ -29,6 +29,10 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
 
     @Override
     public String analyzeVideo(SocialMediaPost post) {
+        return analyzeVideoWithStep(post, "all");
+    }
+
+    public String analyzeVideoWithStep(SocialMediaPost post, String step) {
         try {
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("title", post.getCaption());
@@ -48,7 +52,8 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
                     "--mode", "video",
                     "--video_id", post.getPlatformPostId(),
                     "--type", post.getVideoType() != null ? post.getVideoType().toLowerCase() : "long",
-                    "--metadata_base64", base64Metadata
+                    "--metadata_base64", base64Metadata,
+                    "--step", step
             );
             pb.directory(new java.io.File("../ai"));
             
@@ -75,7 +80,12 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
                 throw new RuntimeException("AI Analysis failed");
             }
             
-            return output.toString().trim();
+            String rawOutput = output.toString().trim();
+            // Remove any trailing markdown backticks that might have been included
+            if (rawOutput.endsWith("```")) {
+                rawOutput = rawOutput.substring(0, rawOutput.length() - 3).trim();
+            }
+            return rawOutput;
             
         } catch (Exception e) {
             log.error("Failed to analyze video", e);
@@ -150,7 +160,11 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
                 throw new RuntimeException("AI Analysis failed");
             }
             
-            return output.toString().trim();
+            String rawOutput = output.toString().trim();
+            if (rawOutput.endsWith("```")) {
+                rawOutput = rawOutput.substring(0, rawOutput.length() - 3).trim();
+            }
+            return rawOutput;
             
         } catch (Exception e) {
             log.error("Failed to analyze channel trend", e);

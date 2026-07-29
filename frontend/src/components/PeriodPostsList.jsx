@@ -3,15 +3,12 @@ import { TrendingUp, MessageCircle, Heart, ChevronLeft, ChevronRight, Eye, Zap }
 import HoverVideo from './HoverVideo';
 import { socialAnalyticsApi } from '../services/api';
 
-const PeriodPostsList = ({ payload }) => {
+const PeriodPostsList = ({ payload, selectedPostIds, onToggleSelect, onOpenVideoModal }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const listRef = useRef(null);
-  
-  const [analyzingPostId, setAnalyzingPostId] = useState(null);
-  const [aiAnalysisResults, setAiAnalysisResults] = useState({});
 
-  // Reset page and scroll into view when payload changes
+  // Reset page when payload changes
   useEffect(() => {
     setCurrentPage(1);
     if (listRef.current) {
@@ -39,20 +36,41 @@ const PeriodPostsList = ({ payload }) => {
     if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
   };
 
-  const handleAnalyzeVideo = async (postId) => {
-    if (analyzingPostId === postId || aiAnalysisResults[postId]) return;
-    
-    setAnalyzingPostId(postId);
+  const parseAiResult = (resultStr) => {
+      if (!resultStr) return null;
+      let clean = resultStr.trim();
+      const start = clean.indexOf('{');
+      const end = clean.lastIndexOf('}');
+      if (start !== -1 && end !== -1) {
+          clean = clean.substring(start, end + 1);
+      }
+      try { return JSON.parse(clean); } catch(e) { return null; }
+  };
+
+  const handleAnalyzeVideo = async (postId, hasAnalysis) => {
+    if (hasAnalysis && onOpenVideoModal) {
+        onOpenVideoModal(postId);
+        return;
+    }
     try {
+      // Just fire and forget for single video (async background)
       const result = await socialAnalyticsApi.analyzeVideoAi(postId);
-      setAiAnalysisResults(prev => ({ ...prev, [postId]: result }));
+      if (result.status === 'already_completed' || (result.hooking_analysis)) {
+        if (onOpenVideoModal) {
+            onOpenVideoModal(postId);
+        } else {
+            alert("이 영상은 이미 분석이 완료되었습니다. Toast 알림창 또는 채널 하단을 확인하세요.");
+        }
+      } else {
+        alert("개별 영상 분석이 백그라운드에서 시작되었습니다.");
+      }
     } catch (error) {
       console.error("AI Analysis failed", error);
-      alert("AI 영상 분석에 실패했습니다.");
-    } finally {
-      setAnalyzingPostId(null);
+      alert("AI 영상 분석 요청에 실패했습니다.");
     }
   };
+
+
 
   return (
     <div ref={listRef} className="period-posts-container glass-card" style={{ marginTop: '1.5rem' }}>
@@ -92,8 +110,11 @@ const PeriodPostsList = ({ payload }) => {
       <div className="period-posts-list">
         {currentPosts.map((post, index) => {
           const overallRank = startIndex + index + 1;
+          const aiData = parseAiResult(post.aiAnalysisResult);
+          const hasAnalysis = aiData && !aiData.error && aiData.status !== 'queued';
+
           return (
-            <div key={post.platformPostId} className="period-post-card">
+            <div key={post.platformPostId} className="period-post-card" style={{ position: 'relative' }}>
               <div className="post-rank">#{overallRank}</div>
               <div className="post-content">
                 <div className="post-stats">
@@ -122,60 +143,53 @@ const PeriodPostsList = ({ payload }) => {
                   {post.caption || "No caption provided"}
                 </div>
                 
-                <button 
-                    onClick={() => handleAnalyzeVideo(post.id)}
-                    disabled={analyzingPostId === post.id}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      cursor: analyzingPostId === post.id ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      opacity: analyzingPostId === post.id ? 0.7 : 1,
-                      transition: 'opacity 0.2s'
-                    }}
-                >
-                  {analyzingPostId === post.id ? (
-                      <>
-                        <div className="loading-spinner" style={{ width: '1rem', height: '1rem', borderWidth: '2px' }}></div>
-                        AI 분석 중... (최대 30초 소요)
-                      </>
-                  ) : (
-                      <>
-                        <Zap size={18} />
-                        🤖 AI 족집게 분석
-                      </>
-                  )}
-                </button>
-
-                {aiAnalysisResults[post.id] && (
-                  <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px', fontSize: '0.9rem' }}>
-                    <h4 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>✨ 3줄 요약</h4>
-                    <ul style={{ paddingLeft: '1.2rem', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-                      {aiAnalysisResults[post.id].summary_and_keywords?.three_line_summary?.map((line, i) => <li key={i}>{line}</li>)}
-                    </ul>
-
-                    <h4 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>🔥 후킹 분석 (점수: {aiAnalysisResults[post.id].hooking_analysis?.hook_score}점)</h4>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}><strong>유형:</strong> {aiAnalysisResults[post.id].hooking_analysis?.primary_hook_type}</p>
-                    <div style={{ color: 'var(--text-secondary)', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
-                      <div style={{ marginBottom: '0.3rem' }}><strong>시각:</strong> {aiAnalysisResults[post.id].hooking_analysis?.breakdown?.visual_hook}</div>
-                      <div style={{ marginBottom: '0.3rem' }}><strong>청각:</strong> {aiAnalysisResults[post.id].hooking_analysis?.breakdown?.audio_hook}</div>
-                      <div><strong>텍스트:</strong> {aiAnalysisResults[post.id].hooking_analysis?.breakdown?.text_hook}</div>
+                {hasAnalysis && aiData.summary_and_keywords && (
+                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                        <h4 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>✨ AI 3줄 요약</h4>
+                        <ul style={{ paddingLeft: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>
+                            {aiData.summary_and_keywords.three_line_summary?.slice(0, 3).map((line, i) => <li key={i} style={{ marginBottom: '0.2rem' }}>{line}</li>)}
+                        </ul>
                     </div>
-
-                    <h4 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>📈 개선 피드백</h4>
-                    <ul style={{ paddingLeft: '1.2rem', color: 'var(--text-secondary)' }}>
-                      {aiAnalysisResults[post.id].improvement_feedback?.map((fb, i) => <li key={i}>{fb}</li>)}
-                    </ul>
-                  </div>
                 )}
+
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button 
+                      onClick={() => handleAnalyzeVideo(post.id, hasAnalysis)}
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: hasAnalysis ? 'rgba(59, 130, 246, 0.2)' : 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
+                        color: hasAnalysis ? '#3b82f6' : 'white',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        transition: 'all 0.2s',
+                        border: hasAnalysis ? '1px solid rgba(59, 130, 246, 0.5)' : 'none'
+                      }}
+                  >
+                    <Zap size={18} />
+                    {hasAnalysis ? "✨ 상세 분석 결과 열기" : "🤖 AI 족집게 분석"}
+                  </button>
+                  <label style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '46px', height: '46px', borderRadius: '8px',
+                    backgroundColor: (selectedPostIds && selectedPostIds.has(post.id)) ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                    border: (selectedPostIds && selectedPostIds.has(post.id)) ? '2px solid #8b5cf6' : '1px solid rgba(255, 255, 255, 0.1)',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedPostIds && selectedPostIds.has(post.id)}
+                      onChange={() => onToggleSelect && onToggleSelect(post.id)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#8b5cf6', margin: 0 }}
+                    />
+                  </label>
+                </div>
               </div>
             </div>
           );

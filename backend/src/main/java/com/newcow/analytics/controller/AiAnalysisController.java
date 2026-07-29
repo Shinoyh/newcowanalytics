@@ -18,6 +18,7 @@ import java.util.List;
 public class AiAnalysisController {
 
     private final AiAnalysisService aiAnalysisService;
+    private final com.newcow.analytics.service.ai.AiBatchService aiBatchService;
     private final SocialMediaPostRepository postRepository;
     private final SocialAccountRepository accountRepository;
 
@@ -28,18 +29,30 @@ public class AiAnalysisController {
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         
         if (!forceRefresh && post.getAiAnalysisResult() != null && !post.getAiAnalysisResult().trim().isEmpty()) {
+            // Already analyzed, return the actual JSON result so the frontend can display it
             return ResponseEntity.ok(post.getAiAnalysisResult());
         }
         
-        String resultJson = aiAnalysisService.analyzeVideo(post);
-        
-        // Save back to DB if it doesn't look like an error
-        if (resultJson != null && resultJson.trim().startsWith("{") && !resultJson.contains("\"error\"")) {
-            post.setAiAnalysisResult(resultJson);
-            postRepository.save(post);
-        }
-        
-        return ResponseEntity.ok(resultJson);
+        aiBatchService.submitVideoAnalysis(post);
+        return ResponseEntity.ok("{\"status\":\"queued\"}");
+    }
+
+    @PostMapping(value = "/batch", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<String> analyzeBatch(@RequestBody List<Long> postIds) {
+        List<SocialMediaPost> posts = postRepository.findAllById(postIds);
+        aiBatchService.submitBatchAnalysis(posts);
+        return ResponseEntity.ok("{\"status\":\"queued\", \"count\":" + posts.size() + "}");
+    }
+
+    @GetMapping(value = "/status", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<java.util.Map<Long, String>> getJobStatuses() {
+        return ResponseEntity.ok(aiBatchService.getAllJobStatuses());
+    }
+
+    @DeleteMapping(value = "/status/{postId}", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<String> clearJobStatus(@PathVariable Long postId) {
+        aiBatchService.clearJobStatus(postId);
+        return ResponseEntity.ok("{\"status\":\"cleared\"}");
     }
 
     @PostMapping(value = "/channel/{platform}/{username}", produces = "application/json;charset=UTF-8")

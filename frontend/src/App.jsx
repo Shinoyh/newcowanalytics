@@ -7,6 +7,8 @@ import PeriodPostsList from './components/PeriodPostsList';
 import ChannelSelectModal from './components/ChannelSelectModal';
 import ChannelAiModal from './components/ChannelAiModal';
 import HomeDashboard from './components/HomeDashboard';
+import JobProgressToast from './components/JobProgressToast';
+import VideoAiModal from './components/VideoAiModal';
 import { socialAnalyticsApi } from './services/api';
 
 function App() {
@@ -22,6 +24,68 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [showChannelAiModal, setShowChannelAiModal] = useState(false);
   const [searchQueryForModal, setSearchQueryForModal] = useState('');
+
+  // Video AI Modal state
+  const [videoModalPost, setVideoModalPost] = useState(null);
+  const [videoModalResult, setVideoModalResult] = useState(null);
+
+  // Batch analysis state
+  const [selectedPostIds, setSelectedPostIds] = useState(new Set());
+  const [isBatchLoading, setIsBatchLoading] = useState(false);
+  const [isAnyJobActive, setIsAnyJobActive] = useState(false);
+
+  useEffect(() => {
+      setSelectedPostIds(new Set());
+  }, [data]);
+
+  const handleToggleSelect = (postId) => {
+    setSelectedPostIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleBatchAnalyze = async () => {
+    if (selectedPostIds.size === 0) return;
+    setIsBatchLoading(true);
+    try {
+      const postIds = Array.from(selectedPostIds);
+      await socialAnalyticsApi.batchAnalyzeVideos(postIds);
+      alert(`${postIds.length}개의 영상 일괄 분석이 큐에 등록되었습니다.`);
+      setSelectedPostIds(new Set());
+    } catch (error) {
+      console.error("Batch analyze failed", error);
+      alert("일괄 분석 요청에 실패했습니다.");
+    } finally {
+      setIsBatchLoading(false);
+    }
+  };
+
+  const handleOpenVideoModal = async (postId) => {
+      // Find the post object (use loose equality because p.id might be a string from backend)
+      const post = data?.recentPosts?.find(p => p.id == postId);
+      if (!post) {
+          alert("영상을 찾을 수 없습니다.");
+          return;
+      }
+      try {
+          const result = await socialAnalyticsApi.analyzeVideoAi(postId);
+          if (result.status === 'queued') {
+              alert("아직 큐 대기 중이거나 처리 중입니다.");
+              return;
+          }
+          setVideoModalPost(post);
+          setVideoModalResult(result);
+      } catch (err) {
+          console.error("Failed to fetch video AI result", err);
+          alert("AI 분석 결과를 가져오는데 실패했습니다.");
+      }
+  };
 
   const handleSearch = async (username, isFromSuggestion = false) => {
     if (!username || username.trim() === '') {
@@ -114,13 +178,7 @@ function App() {
 
         {error && <div className="error-msg">{error}</div>}
 
-        {isAiLoading && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 17, 26, 0.8)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)' }}>
-                <div className="loading-spinner" style={{ width: '4rem', height: '4rem', borderWidth: '4px', marginBottom: '1.5rem', borderTopColor: '#10b981' }}></div>
-                <h3 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 600 }}>AI 분석 중...</h3>
-                <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>최대 30초 정도 소요될 수 있습니다.</p>
-            </div>
-        )}
+
 
         {!data && !isLoading && !error && (
             <HomeDashboard 
@@ -182,9 +240,19 @@ function App() {
                           try {
                               let result = await socialAnalyticsApi.analyzeChannelAi(data.platform, data.username);
                               if (typeof result === 'string') {
-                                  try { result = JSON.parse(result); } catch(e) {}
+                                  try { 
+                                      const jsonStart = result.indexOf('{');
+                                      const jsonEnd = result.lastIndexOf('}');
+                                      if (jsonStart !== -1 && jsonEnd !== -1) {
+                                          result = JSON.parse(result.substring(jsonStart, jsonEnd + 1));
+                                      } else {
+                                          result = JSON.parse(result); 
+                                      }
+                                  } catch(e) {}
                               }
-                              result._meta = { platform: data.platform, username: data.username };
+                              if (typeof result === 'object' && result !== null) {
+                                  result._meta = { platform: data.platform, username: data.username };
+                              }
                               setChannelAiData(result);
                               setShowChannelAiModal(true);
                           } catch (error) {
@@ -214,7 +282,29 @@ function App() {
                 </div>
               </div>
               <div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px', gap: '10px', alignItems: 'center' }}>
+                    <button 
+                        onClick={() => executeAnalyze(data.platform, data.username)}
+                        style={{
+                            padding: '0.4rem 0.8rem', 
+                            fontSize: '0.9rem', 
+                            borderRadius: '20px', 
+                            border: '1px solid var(--accent-primary)',
+                            backgroundColor: 'transparent',
+                            color: 'var(--accent-primary)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            transition: 'all 0.2s'
+                        }}
+                        title="최신 채널 데이터(영상, 조회수 등)를 소셜 플랫폼에서 다시 가져옵니다."
+                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'var(--accent-primary)'; e.currentTarget.style.color = 'white'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
+                    >
+                        🔄 데이터 갱신
+                    </button>
+                    <div style={{ width: '1px', height: '20px', backgroundColor: 'rgba(255,255,255,0.2)', margin: '0 5px' }}></div>
                     <button className={`toggle-btn ${videoTypeFilter === 'ALL' ? 'active' : ''}`} style={{ padding: '0.4rem 1rem', fontSize: '0.9rem' }} onClick={() => setVideoTypeFilter('ALL')}>전체</button>
                     <button className={`toggle-btn ${videoTypeFilter === 'SHORT' ? 'active' : ''}`} style={{ padding: '0.4rem 1rem', fontSize: '0.9rem' }} onClick={() => setVideoTypeFilter('SHORT')}>숏츠/릴스</button>
                     <button className={`toggle-btn ${videoTypeFilter === 'LONG' ? 'active' : ''}`} style={{ padding: '0.4rem 1rem', fontSize: '0.9rem' }} onClick={() => setVideoTypeFilter('LONG')}>롱폼</button>
@@ -223,9 +313,21 @@ function App() {
               </div>
             </div>
             
-            <TopHooks posts={filteredPosts} />
+            <TopHooks 
+                posts={filteredPosts} 
+                selectedPostIds={selectedPostIds} 
+                onToggleSelect={handleToggleSelect}
+                onOpenVideoModal={handleOpenVideoModal} 
+            />
 
-            {selectedPeriod && <PeriodPostsList payload={selectedPeriod} />}
+            {selectedPeriod && (
+                <PeriodPostsList 
+                    payload={selectedPeriod} 
+                    selectedPostIds={selectedPostIds} 
+                    onToggleSelect={handleToggleSelect}
+                    onOpenVideoModal={handleOpenVideoModal}
+                />
+            )}
           </>
         )}
         
@@ -254,9 +356,19 @@ function App() {
                 try {
                     let result = await socialAnalyticsApi.analyzeChannelAi(channelAiData._meta.platform, channelAiData._meta.username, true);
                     if (typeof result === 'string') {
-                        try { result = JSON.parse(result); } catch(e) {}
+                        try { 
+                            const jsonStart = result.indexOf('{');
+                            const jsonEnd = result.lastIndexOf('}');
+                            if (jsonStart !== -1 && jsonEnd !== -1) {
+                                result = JSON.parse(result.substring(jsonStart, jsonEnd + 1));
+                            } else {
+                                result = JSON.parse(result); 
+                            }
+                        } catch(e) {}
                     }
-                    result._meta = channelAiData._meta;
+                    if (typeof result === 'object' && result !== null) {
+                        result._meta = channelAiData._meta;
+                    }
                     setChannelAiData(result);
                     setShowChannelAiModal(true);
                 } catch (error) {
@@ -266,6 +378,62 @@ function App() {
                     setIsAiLoading(false);
                 }
             } : null}
+        />
+        <JobProgressToast 
+            onOpenResultModal={handleOpenVideoModal} 
+            isChannelAiLoading={isAiLoading} 
+            onActiveJobsChange={setIsAnyJobActive}
+        />
+
+        {selectedPostIds.size > 0 && (
+            <div style={{
+              position: 'fixed',
+              top: '50%',
+              right: '20px',
+              transform: 'translateY(-50%)',
+              backgroundColor: 'rgba(59, 130, 246, 0.95)',
+              backdropFilter: 'blur(10px)',
+              padding: '1.2rem',
+              borderRadius: '20px',
+              boxShadow: '0 10px 25px rgba(59, 130, 246, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1rem',
+              zIndex: 9998
+            }}>
+              <span style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem', textAlign: 'center' }}>
+                선택됨<br/>{selectedPostIds.size}개
+              </span>
+              <button 
+                onClick={handleBatchAnalyze}
+                disabled={isBatchLoading || isAnyJobActive}
+                style={{
+                  padding: '0.8rem 1rem',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: 'white',
+                  color: (isBatchLoading || isAnyJobActive) ? '#9ca3af' : '#3b82f6',
+                  fontWeight: 'bold',
+                  cursor: (isBatchLoading || isAnyJobActive) ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                }}
+              >
+                <span style={{ fontSize: '1.2rem' }}>🚀</span>
+                <span style={{ fontSize: '0.85rem' }}>일괄 분석</span>
+              </button>
+            </div>
+        )}
+
+        <VideoAiModal 
+            isOpen={!!videoModalResult} 
+            onClose={() => { setVideoModalResult(null); setVideoModalPost(null); }} 
+            post={videoModalPost} 
+            aiResult={videoModalResult} 
         />
     </div>
   );
