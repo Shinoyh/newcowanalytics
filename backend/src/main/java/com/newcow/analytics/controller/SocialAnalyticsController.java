@@ -2,9 +2,11 @@ package com.newcow.analytics.controller;
 
 import com.newcow.analytics.dto.SocialAccountDataDto;
 import com.newcow.analytics.repository.SocialAccountRepository;
+import com.newcow.analytics.repository.SocialMediaPostRepository;
 import com.newcow.analytics.service.SocialMediaAnalyzeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +20,7 @@ public class SocialAnalyticsController {
 
     private final List<SocialMediaAnalyzeService> analyzeServices;
     private final SocialAccountRepository accountRepository;
+    private final SocialMediaPostRepository postRepository;
 
     @GetMapping("/{platform}/analyze/{username}")
     public ResponseEntity<SocialAccountDataDto> analyzeAccount(
@@ -81,6 +84,22 @@ public class SocialAnalyticsController {
         
         account.setPinned(!account.isPinned());
         accountRepository.save(account);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/account/{platform}/{username}")
+    @Transactional
+    public ResponseEntity<Void> deleteAccount(
+            @PathVariable String platform,
+            @PathVariable String username) {
+        
+        String cleanUsername = username.startsWith("@") ? username : "@" + username;
+        com.newcow.analytics.domain.SocialAccount account = accountRepository
+                .findByUsernameAndPlatform(cleanUsername, platform.toUpperCase())
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+        
+        postRepository.deleteByAccount(account);
+        accountRepository.delete(account);
         return ResponseEntity.ok().build();
     }
 

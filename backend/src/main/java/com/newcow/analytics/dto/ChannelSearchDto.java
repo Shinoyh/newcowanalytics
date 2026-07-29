@@ -10,7 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChannelSearchDto {
-    private String username;
+    private String username; // The @handle or unique identifier
+    private String displayName; // The human-readable channel title
     private String platform;
     private String profilePictureUrl;
 }

@@ -48,6 +48,19 @@ const HomeDashboard = ({ onSelectAccount, platform, onAiAnalysisRequest }) => {
         }
     };
 
+    const handleDelete = async (e, username) => {
+        e.stopPropagation();
+        if (window.confirm(`${username} 계정을 분석 목록에서 삭제하시겠습니까?`)) {
+            try {
+                await socialAnalyticsApi.deleteAccount(platform, username);
+                await fetchRecent();
+            } catch (err) {
+                console.error("Failed to delete account", err);
+                alert("계정 삭제에 실패했습니다.");
+            }
+        }
+    };
+
     if (isLoading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
@@ -154,9 +167,16 @@ const HomeDashboard = ({ onSelectAccount, platform, onAiAnalysisRequest }) => {
                                 >
                                     📌
                                 </button>
+                                <button 
+                                    onClick={(e) => handleDelete(e, account.username)}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.2rem', marginLeft: '0.2rem', lineHeight: '1' }}
+                                    title="삭제하기"
+                                >
+                                    &times;
+                                </button>
                             </div>
                             
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', paddingRight: '6.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', paddingRight: '8.5rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                     {account.profilePictureUrl && (
                                         <img src={account.profilePictureUrl} alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
@@ -257,6 +277,13 @@ const HomeDashboard = ({ onSelectAccount, platform, onAiAnalysisRequest }) => {
                                     title="고정하기"
                                 >
                                     📌
+                                </button>
+                                <button 
+                                    onClick={(e) => handleDelete(e, account.username)}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0', marginLeft: '0.3rem', fontSize: '1.2rem', lineHeight: '1' }}
+                                    title="삭제하기"
+                                >
+                                    &times;
                                 </button>
                             </div>
                         ))}

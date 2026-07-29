@@ -43,6 +43,25 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
 
     @Override
     public SocialAccountDataDto analyzeAccount(String username) {
+        // If the frontend passed a channelId (starts with UC and length 24)
+        if (username != null && username.startsWith("UC") && username.length() == 24) {
+            try {
+                String url = "https://www.googleapis.com/youtube/v3/channels?part=snippet&id=" + username + "&key=" + apiKey;
+                org.springframework.http.ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+                com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(response.getBody());
+                if (root.has("items") && root.path("items").size() > 0) {
+                    com.fasterxml.jackson.databind.JsonNode snippet = root.path("items").get(0).path("snippet");
+                    if (snippet.has("customUrl")) {
+                        username = snippet.path("customUrl").asText(); // Resolves to e.g. @wo_ongp
+                    } else {
+                        username = snippet.path("title").asText(); // fallback
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to resolve channelId to customUrl: " + username, e);
+            }
+        }
+
         String cleanUsername = username.startsWith("@") ? username : "@" + username;
 
         SocialAccount account = accountRepository.findByUsernameAndPlatform(cleanUsername, "YOUTUBE")
@@ -247,8 +266,8 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
             if (root.has("items")) {
                 for (JsonNode item : root.path("items")) {
                     results.add(com.newcow.analytics.dto.ChannelSearchDto.builder()
-                            .username(item.path("snippet").path("title").asText()) // Using title as username for
-                                                                                   // display
+                            .username(item.path("snippet").path("channelId").asText()) // Using channelId as username
+                            .displayName(item.path("snippet").path("title").asText()) // Using title as displayName
                             .platform("YOUTUBE")
                             .profilePictureUrl(
                                     item.path("snippet").path("thumbnails").path("high").path("url").asText())

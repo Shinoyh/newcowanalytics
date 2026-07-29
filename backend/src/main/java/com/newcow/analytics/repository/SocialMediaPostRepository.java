@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface SocialMediaPostRepository extends JpaRepository<SocialMediaPost, Long> {
     Optional<SocialMediaPost> findByAccountAndPlatformPostId(SocialAccount account, String platformPostId);
     List<SocialMediaPost> findByAccountOrderByTimestampDesc(SocialAccount account);
+    void deleteByAccount(SocialAccount account);
 }

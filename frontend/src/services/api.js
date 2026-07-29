@@ -38,6 +38,12 @@ export const socialAnalyticsApi = {
         return response.data;
     },
 
+    // Delete account
+    deleteAccount: async (platform, username) => {
+        const response = await api.delete(`/account/${platform}/${username}`);
+        return response.data;
+    },
+
     // AI Analyze Video
     analyzeVideoAi: async (postId, forceRefresh = false) => {
         const response = await api.post(`/ai/analyze/video/${postId}?forceRefresh=${forceRefresh}`);

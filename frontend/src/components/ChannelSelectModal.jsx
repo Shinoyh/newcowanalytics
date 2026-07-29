@@ -73,11 +73,11 @@ const ChannelSelectModal = ({ query, platform, onClose, onSelect }) => {
                     >
                         <img 
                             src={channel.profilePictureUrl || 'https://via.placeholder.com/50'} 
-                            alt={channel.username}
+                            alt={channel.displayName || channel.username}
                             style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }}
                         />
                         <div>
-                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{channel.username}</div>
+                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{channel.displayName || channel.username}</div>
                             <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{channel.platform}</div>
                         </div>
                     </div>
