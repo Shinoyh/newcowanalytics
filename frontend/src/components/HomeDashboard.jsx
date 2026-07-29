@@ -87,11 +87,37 @@ const HomeDashboard = ({ onSelectAccount, platform, onAiAnalysisRequest }) => {
             <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem' }}>최근 분석한 계정</h2>
             <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
                 {cardAccounts.map((account, idx) => {
-                    // Create mini chart data (reverse to chronological)
-                    const chartData = [...(account.recentPosts || [])].reverse().map((p, i) => ({
-                        name: `Post ${i}`,
-                        engagement: p.engagement
-                    }));
+                    // Calculate medians for the visual ReferenceLine
+                    const rawPosts = account.recentPosts || [];
+                    let pastMedian = 0;
+                    let recentMedian = 0;
+                    
+                    if (rawPosts.length >= 2) {
+                        const mid = Math.floor(rawPosts.length / 2);
+                        // rawPosts is New -> Old. So recent is 0..mid, past is mid..end
+                        const recentHalf = rawPosts.slice(0, mid).map(p => p.engagement).sort((a,b) => a - b);
+                        const pastHalf = rawPosts.slice(mid).map(p => p.engagement).sort((a,b) => a - b);
+                        
+                        pastMedian = pastHalf.length % 2 === 0 
+                            ? (pastHalf[pastHalf.length/2 - 1] + pastHalf[pastHalf.length/2]) / 2 
+                            : pastHalf[Math.floor(pastHalf.length/2)];
+                            
+                        recentMedian = recentHalf.length % 2 === 0 
+                            ? (recentHalf[recentHalf.length/2 - 1] + recentHalf[recentHalf.length/2]) / 2 
+                            : recentHalf[Math.floor(recentHalf.length/2)];
+                    }
+
+                    // Create mini chart data (reverse to chronological: Past -> Recent)
+                    const midIndex = Math.floor(rawPosts.length / 2);
+                    const chartData = [...rawPosts].reverse().map((p, i) => {
+                        const isPast = i < midIndex;
+                        return {
+                            name: `Post ${i}`,
+                            engagement: p.engagement,
+                            pastMedianLine: isPast ? pastMedian : null,
+                            recentMedianLine: !isPast ? recentMedian : null
+                        };
+                    });
 
                     return (
                         <div 
@@ -148,13 +174,13 @@ const HomeDashboard = ({ onSelectAccount, platform, onAiAnalysisRequest }) => {
                                         fontSize: '1.1rem', 
                                         fontWeight: 'bold', 
                                         color: account.growthRate >= 0 ? 'var(--text-success)' : 'var(--text-danger)' 
-                                    }}>
+                                    }} title="과거 절반 대비 최근 절반의 중앙값 변화율">
                                         {account.growthRate >= 0 ? '+' : ''}{account.growthRate.toFixed(1)}%
                                     </div>
                                 </div>
                             </div>
                             
-                            <div style={{ height: '80px', width: '100%', marginTop: '1rem' }}>
+                            <div style={{ height: '80px', width: '100%', marginTop: '1rem', position: 'relative' }}>
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={chartData}>
                                         <XAxis dataKey="name" hide />
@@ -163,9 +189,29 @@ const HomeDashboard = ({ onSelectAccount, platform, onAiAnalysisRequest }) => {
                                             type="monotone" 
                                             dataKey="engagement" 
                                             stroke={account.growthRate >= 0 ? '#10b981' : '#ef4444'} 
-                                            strokeWidth={2} 
+                                            strokeWidth={1.5} 
                                             dot={false}
                                             isAnimationActive={false}
+                                        />
+                                        <Line 
+                                            type="step" 
+                                            dataKey="pastMedianLine" 
+                                            stroke="rgba(255,255,255,0.7)" 
+                                            strokeWidth={2} 
+                                            strokeDasharray="5 5"
+                                            dot={false}
+                                            isAnimationActive={false}
+                                            connectNulls={false}
+                                        />
+                                        <Line 
+                                            type="step" 
+                                            dataKey="recentMedianLine" 
+                                            stroke="rgba(255,255,255,0.9)" 
+                                            strokeWidth={2} 
+                                            strokeDasharray="5 5"
+                                            dot={false}
+                                            isAnimationActive={false}
+                                            connectNulls={false}
                                         />
                                     </LineChart>
                                 </ResponsiveContainer>

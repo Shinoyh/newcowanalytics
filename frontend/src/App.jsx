@@ -33,6 +33,7 @@ function App() {
   const [selectedPostIds, setSelectedPostIds] = useState(new Set());
   const [isBatchLoading, setIsBatchLoading] = useState(false);
   const [isAnyJobActive, setIsAnyJobActive] = useState(false);
+  const [isBatchListOpen, setIsBatchListOpen] = useState(false);
 
   useEffect(() => {
       setSelectedPostIds(new Set());
@@ -383,6 +384,7 @@ function App() {
             onOpenResultModal={handleOpenVideoModal} 
             isChannelAiLoading={isAiLoading} 
             onActiveJobsChange={setIsAnyJobActive}
+            posts={data?.recentPosts || []}
         />
 
         {selectedPostIds.size > 0 && (
@@ -402,9 +404,51 @@ function App() {
               gap: '1rem',
               zIndex: 9998
             }}>
-              <span style={{ color: 'white', fontWeight: 'bold', fontSize: '0.9rem', textAlign: 'center' }}>
-                선택됨<br/>{selectedPostIds.size}개
-              </span>
+              <div 
+                  onClick={() => setIsBatchListOpen(!isBatchListOpen)}
+                  style={{ color: 'white', fontWeight: 'bold', fontSize: '0.95rem', textAlign: 'center', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', userSelect: 'none' }}
+                  title="선택된 항목 보기"
+              >
+                <span>선택됨 {selectedPostIds.size}개</span>
+                <span style={{ transform: isBatchListOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', fontSize: '0.8rem' }}>▼</span>
+              </div>
+
+              {isBatchListOpen && (
+                  <div style={{
+                      backgroundColor: 'rgba(0,0,0,0.4)',
+                      borderRadius: '12px',
+                      padding: '0.8rem',
+                      width: '200px',
+                      maxHeight: '150px',
+                      overflowY: 'auto',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.4rem',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                      {Array.from(selectedPostIds).map(id => {
+                          const post = data?.recentPosts?.find(p => p.id?.toString() === id.toString());
+                          const captionStr = post?.caption || '';
+                          const title = captionStr || `Post ID: ${id}`;
+                          return (
+                              <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                  <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '0.3rem', flex: 1 }}>
+                                      <span style={{ color: 'var(--accent-primary)', flexShrink: 0 }}>•</span>
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+                                  </div>
+                                  <button 
+                                      onClick={(e) => { e.stopPropagation(); handleToggleSelect(id); }}
+                                      style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '0 0.2rem', flexShrink: 0 }}
+                                      title="선택 해제"
+                                  >
+                                      &times;
+                                  </button>
+                              </div>
+                          );
+                      })}
+                  </div>
+              )}
+
               <button 
                 onClick={handleBatchAnalyze}
                 disabled={isBatchLoading || isAnyJobActive}

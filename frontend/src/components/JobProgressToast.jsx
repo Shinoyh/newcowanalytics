@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { socialAnalyticsApi } from '../services/api';
 
-function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsChange }) {
+function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsChange, posts = [] }) {
     const [jobStatuses, setJobStatuses] = useState({});
     const [isClosed, setIsClosed] = useState(false);
     const prevActiveCount = React.useRef(0);
@@ -116,26 +116,35 @@ function JobProgressToast({ onOpenResultModal, isChannelAiLoading, onActiveJobsC
                 </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
-                {activeJobs.map(([postIdStr, status]) => (
-                    <div 
-                        key={postIdStr}
-                        onClick={() => handleJobClick(postIdStr, status)}
-                        style={{
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            padding: '0.6rem',
-                            borderRadius: '8px',
-                            fontSize: '0.85rem',
-                            cursor: (status === 'COMPLETED' || status === 'already_completed') ? 'pointer' : 'default',
-                            border: (status === 'COMPLETED' || status === 'already_completed') ? '1px solid var(--accent-success)' : '1px solid transparent',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        <div style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Post ID: {postIdStr}</div>
-                        <div style={{ color: getStatusColor(status) }}>
-                            {getStatusText(status)}
+                {activeJobs.map(([postIdStr, status]) => {
+                    const post = posts.find(p => p.id?.toString() === postIdStr.toString());
+                    const captionStr = post && post.caption ? post.caption : '';
+                    const title = captionStr 
+                        ? (captionStr.length > 35 ? captionStr.substring(0, 35) + '...' : captionStr) 
+                        : `Post ID: ${postIdStr}`;
+                    return (
+                        <div 
+                            key={postIdStr}
+                            onClick={() => handleJobClick(postIdStr, status)}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                padding: '0.6rem',
+                                borderRadius: '8px',
+                                fontSize: '0.85rem',
+                                cursor: (status === 'COMPLETED' || status === 'already_completed') ? 'pointer' : 'default',
+                                border: (status === 'COMPLETED' || status === 'already_completed') ? '1px solid var(--accent-success)' : '1px solid transparent',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {title}
+                            </div>
+                            <div style={{ color: getStatusColor(status) }}>
+                                {getStatusText(status)}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
                 
                 {isChannelAiLoading && (
                     <div style={{
