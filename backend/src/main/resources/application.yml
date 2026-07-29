@@ -1,0 +1,38 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:newcow_db;DB_CLOSE_DELAY=-1;MODE=MySQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+        
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  sql:
+    init:
+      mode: always # Executes schema.sql on startup if present
+
+# Custom properties for external APIs
+app:
+  social:
+    instagram:
+      # Currently mocked, you can set real values using ENV variables e.g. INSTAGRAM_ACCESS_TOKEN
+      access-token: "EAATW2J46zmABSJYwYibjiubpaLC52ZAKIp8rdv4RMUIPNZAuZAJDZCIIKWg7kghwMAtaNrGqtm1nGGlgyeaL1p95ZCdrFQT2v4yZCMfAzEdo8ENULdQUsoPJYRDmLN1ZCZAUlZApKBcMeDzWlCuCw3xZALfwSo1D2BbDuLrY9Bw1kVnoyEVK9ZABcZB1jdBHFszTzuzN8utpC2jveYjawE2A1R4MZB7KN9YHVwqWuL61fPn5gdZB5iRktspewKWOZCBZATSSwB53LBFk4mD2Mv4d5gZDZD"
+      account-id: "17841440826407138"
+      api-version: "v20.0"
+    youtube:
+      api-key: "${YOUTUBE_API_KEY:YOUR_YOUTUBE_API_KEY_HERE}"
+  ai:
+    gemini:
+      api-key: "${GEMINI_API_KEY:YOUR_GEMINI_API_KEY_HERE}"
