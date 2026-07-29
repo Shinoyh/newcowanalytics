@@ -2,75 +2,78 @@
 
 NewCowAnalytics는 유튜브 채널과 인스타그램 계정의 성장 추세, 사용자 반응(Engagement), 그리고 AI를 활용한 훅(Hook) 분석 기능을 제공하는 종합 소셜 미디어 분석 대시보드입니다.
 
-## 🛠️ 필수 설치 항목 및 환경 설정 (Prerequisites)
+## 🛠️ 1단계: 필수 설치 항목 (Prerequisites)
 
-이 프로젝트를 로컬에서 온전히 실행하고 AI 기능을 사용하기 위해서는 다음 프로그램과 파일들이 필요합니다.
+개발 지식이 없는 분들도 쉽게 따라 하실 수 있도록 기초부터 설명합니다. 아래 프로그램들이 PC에 설치되어 있어야 합니다.
 
-### 1. 프로그래밍 언어 및 런타임
-- **Java 17+**: 백엔드 (Spring Boot) 서버 실행을 위해 필요합니다.
-- **Node.js (v18 이상 권장)**: 프론트엔드 (React + Vite) 서버 실행 및 패키지 관리를 위해 필요합니다.
-- **Python 3.10+**: AI 영상 분석 스크립트 실행을 위해 필요합니다. (Python 설치 후 `google-genai` 패키지 설치 필요)
-  ```bash
-  pip install google-genai
-  ```
-
-### 2. 영상 처리용 외부 실행 파일 (.exe)
-용량 문제로 GitHub에 업로드되지 않은 영상 처리 핵심 도구들을 직접 다운로드하여 `ai/` 폴더에 배치해야 합니다.
-- [yt-dlp.exe](https://github.com/yt-dlp/yt-dlp/releases) : 유튜브 및 인스타그램 영상 다운로더
-- [ffmpeg.exe](https://ffmpeg.org/download.html) : 영상/오디오 인코딩 및 추출 도구
-
-**파일 배치 구조:**
-```text
-NewCowAnalytics/
- ├── ai/
- │    ├── ai_analyzer.py
- │    ├── yt-dlp.exe (직접 다운로드 필요)
- │    └── ffmpeg.exe (직접 다운로드 필요)
-```
-
-### 3. API 키 설정 (Environment Variables)
-`backend/src/main/resources/application.yml` 파일 또는 시스템 환경 변수를 통해 다음 API 키들을 입력해야 합니다.
-- `YOUTUBE_API_KEY`: 유튜브 데이터 API 키
-- `GEMINI_API_KEY`: Google Gemini AI API 키
+1. **Java 17 (JDK)**: 백엔드 서버를 켜기 위해 필요합니다. [오라클 홈페이지](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html)에서 설치할 수 있습니다.
+2. **Node.js**: 프론트엔드 화면을 띄우기 위해 필요합니다. [Node.js 공식 홈페이지](https://nodejs.org/)에서 안정적(LTS) 버전을 다운받아 설치해 주세요. (설치 시 무조건 'Next'만 누르시면 됩니다.)
+3. **Python 3.10 이상**: AI 영상 분석을 위해 필요합니다. [Python 홈페이지](https://www.python.org/downloads/)에서 설치해 주세요. **(중요: 설치 창 맨 아래에 `Add Python to PATH` 체크박스를 무조건 체크하셔야 합니다!)**
 
 ---
 
-## 🏃‍♂️ 프로젝트 구동 방법 (How to Run)
+## 🔑 2단계: 필수 파일 및 API 키 셋팅
 
-비개발자도 따라 할 수 있도록 서버를 켜고 접속하는 과정을 단계별로 설명합니다. 이 프로젝트는 **백엔드(데이터 처리)**와 **프론트엔드(화면)** 두 개의 서버를 각각 켜주어야 정상 작동합니다.
+### 1. 외부 프로그램 수동 다운로드 (.exe)
+용량 문제로 GitHub에 포함되지 않은 2개의 파일을 직접 다운로드하여 `ai/` 폴더 안에 넣어주셔야 합니다.
+- [yt-dlp.exe 다운로드](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe) (영상 추출용)
+- [ffmpeg.exe 다운로드](https://github.com/BtbN/FFmpeg-Builds/releases) (오디오 인코딩용 - 압축을 풀고 `bin` 폴더 안의 `ffmpeg.exe`만 복사하세요)
+- 다운받은 두 개의 파일을 프로젝트의 `ai` 폴더 안으로 이동시켜 주세요.
 
-### Step 1. 터미널(명령 프롬프트) 준비하기
-코드 에디터(VS Code 등)에서 터미널 창을 **두 개** 열어주세요. 하나는 백엔드용, 다른 하나는 프론트엔드용입니다.
+### 2. 구글 및 유튜브 API 키 발급 및 입력
+이 프로그램이 유튜브 데이터를 긁어오고 구글 AI(Gemini)를 사용하려면 '열쇠(API Key)'가 필요합니다.
+- 유튜브 키 발급: [Google Cloud Console](https://console.cloud.google.com/)에서 YouTube Data API v3 키를 발급받습니다.
+- 제미나이 키 발급: [Google AI Studio](https://aistudio.google.com/app/apikey)에서 Gemini API 키를 발급받습니다.
 
-### Step 2. 백엔드 서버 켜기 (Java/Spring Boot)
-첫 번째 터미널에서 `backend` 폴더로 이동한 뒤, 서버를 실행하는 명령어를 입력합니다.
-
-**명령어 (Windows 기준):**
-```bash
-cd backend
-./gradlew.bat bootRun
+발급받은 키를 코드에 입력해야 합니다!
+- 프로젝트 폴더 안에서 `backend/src/main/resources/application.yml` 파일을 메모장으로 엽니다.
+- 아래 부분을 찾아 `YOUR_YOUTUBE_API_KEY`와 `YOUR_GEMINI_API_KEY` 글자를 지우고, 발급받은 본인의 키를 붙여넣기 한 뒤 저장하세요.
+```yaml
+app:
+  social:
+    youtube:
+      api-key: "여기에_유튜브_키를_넣으세요"
+  ai:
+    gemini:
+      api-key: "여기에_제미나이_키를_넣으세요"
 ```
-*(Mac/Linux의 경우 `./gradlew bootRun`을 입력하세요.)*
-- 실행 후 `Tomcat started on port 8080`이라는 문구가 뜨면 백엔드가 성공적으로 켜진 것입니다. 이 터미널은 끄지 말고 그대로 두세요.
 
-### Step 3. 프론트엔드 서버 켜기 (React/Vite)
-두 번째 터미널에서 `frontend` 폴더로 이동한 뒤, 관련 패키지를 설치(최초 1회)하고 서버를 실행합니다.
+---
 
-**명령어:**
-```bash
+## 🏃‍♂️ 3단계: 프로젝트 실행하기 (How to Run)
+
+모든 준비가 끝났습니다! 이제 서버를 켜고 접속해 봅시다. 이 프로그램은 **백엔드(데이터)**와 **프론트엔드(화면)** 두 개의 심장을 가지고 있어서 두 개를 모두 켜주셔야 합니다.
+
+### Step 1. 터미널(명령 프롬프트) 창 2개 열기
+윈도우 시작 메뉴에서 **'cmd'**(명령 프롬프트)를 검색해서 **두 개**를 띄워주세요.
+그리고 두 창 모두 `cd` 명령어를 이용해 코드가 다운로드된 폴더로 이동합니다. (예: `cd C:\Users\내이름\Downloads\NewCowAnalytics`)
+
+### Step 2. 백엔드 서버 켜기
+첫 번째 까만 창(cmd)에 아래 두 줄을 차례대로 복사해서 붙여넣고 엔터를 치세요.
+```cmd
+cd backend
+gradlew.bat bootRun
+```
+*(Mac 유저는 `./gradlew bootRun` 입니다.)*
+막 글자들이 올라가다가 멈추고 `Tomcat started on port 8080`이라는 문구가 뜨면 백엔드가 성공적으로 켜진 것입니다. **(이 창은 절대 끄지 마시고 그대로 두세요!)**
+
+### Step 3. 프론트엔드 서버 켜기
+두 번째 까만 창(cmd)에 아래 세 줄을 차례대로 복사해서 붙여넣고 엔터를 치세요.
+```cmd
 cd frontend
 npm install
 npm run dev
 ```
-- 실행 후 `Local: http://localhost:5173/` 이라는 주소가 나타나면 프론트엔드가 성공적으로 켜진 것입니다.
+글자들이 주르륵 올라간 뒤 `➜  Local:   http://localhost:5173/` 이라는 문구가 나타나면 화면 서버도 성공적으로 켜진 것입니다. **(이 창도 그대로 두세요!)**
 
 ### Step 4. 웹 페이지 접속하기
-서버가 모두 켜졌다면, 즐겨 쓰는 인터넷 브라우저(크롬, 엣지 등)를 열고 주소창에 아래 링크를 복사해서 붙여넣기 하세요.
+이제 즐겨 쓰시는 인터넷 브라우저(크롬, 엣지 등)를 열고 주소창에 아래 링크를 입력하세요.
 👉 **[http://localhost:5173](http://localhost:5173)**
-이제 브라우저 화면에 NewCowAnalytics 웹 페이지가 나타납니다!
 
-### 🛑 서버 종료하기
-더 이상 사용하지 않을 때는 열어두었던 터미널 창(백엔드, 프론트엔드)에서 각각 **`Ctrl + C`** 키를 누르면 서버가 안전하게 종료됩니다.
+짜잔! 화면에 NewCowAnalytics 대시보드가 나타났다면 성공입니다! 상단 검색창에 `@mrbeast` 등 유튜브 채널을 검색하여 마음껏 분석을 시작하세요.
+
+> **끄고 싶을 때는?** 
+> 열어두었던 두 개의 까만 창(터미널)에서 각각 **`Ctrl + C`** 키를 연속으로 누르시면 서버가 안전하게 종료됩니다.
 
 ---
 
