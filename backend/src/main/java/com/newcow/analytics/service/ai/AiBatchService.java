@@ -47,7 +47,7 @@ public class AiBatchService {
         } else if (errMsg.contains("Intro or audio files not found")) {
             translatedMsg = "[ERR_DOWNLOAD_FAIL] 영상 다운로드 단계에서 파일을 정상적으로 받아오지 못했습니다.";
         } else {
-            translatedMsg = "[ERR_UNKNOWN] 분석 중 오류 발생: " + errMsg.substring(0, Math.min(errMsg.length(), 80));
+            translatedMsg = "[ERR_UNKNOWN] 분석 중 오류 발생: " + errMsg.substring(0, Math.min(errMsg.length(), 200));
         }
         
         String errorJson = "{\"error\": \"" + translatedMsg.replace("\"", "\\\"").replace("\n", " ") + "\"}";
