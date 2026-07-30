@@ -8,6 +8,17 @@ from google.genai import types
 import argparse
 import base64
 
+def get_cookies_file():
+    paths = [
+        "cookies.txt",
+        "../cookies.txt",
+        "/etc/secrets/cookies.txt"
+    ]
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    return None
+
 def download_short_video(video_id):
     # Download full video for shorts
     out_file = f"{video_id}_short.mp4"
@@ -20,8 +31,9 @@ def download_short_video(video_id):
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", out_file
         ]
-        if os.path.exists("cookies.txt"):
-            cmd.extend(["--cookies", "cookies.txt"])
+        cookies = get_cookies_file()
+        if cookies:
+            cmd.extend(["--cookies", cookies])
         try:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
@@ -41,8 +53,9 @@ def download_long_video_assets(video_id):
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", intro_file
         ]
-        if os.path.exists("cookies.txt"):
-            cmd_intro.extend(["--cookies", "cookies.txt"])
+        cookies = get_cookies_file()
+        if cookies:
+            cmd_intro.extend(["--cookies", cookies])
         try:
             subprocess.run(cmd_intro, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
@@ -59,8 +72,9 @@ def download_long_video_assets(video_id):
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", audio_file
         ]
-        if os.path.exists("cookies.txt"):
-            cmd_audio.extend(["--cookies", "cookies.txt"])
+        cookies = get_cookies_file()
+        if cookies:
+            cmd_audio.extend(["--cookies", cookies])
         try:
             subprocess.run(cmd_audio, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
