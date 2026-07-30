@@ -27,7 +27,7 @@ def download_short_video(video_id):
             "yt-dlp", 
             "--no-warnings",
             "--extractor-args", "youtube:player_client=ios,android",
-            "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "-f", "bestvideo+bestaudio/best",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", out_file
@@ -49,7 +49,7 @@ def download_long_video_assets(video_id):
             "yt-dlp",
             "--no-warnings",
             "--extractor-args", "youtube:player_client=ios,android",
-            "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "-f", "bestvideo+bestaudio/best",
             "--download-sections", "*00:00:00-00:02:00",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
