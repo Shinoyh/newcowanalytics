@@ -100,7 +100,7 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
             payload.put("accountName", account.getUsername());
             payload.put("platform", account.getPlatform());
             
-            List<Map<String, Object>> postsMeta = recentPosts.stream().map(p -> {
+            List<Map<String, Object>> postsMeta = new java.util.ArrayList<>(recentPosts.stream().map(p -> {
                 Map<String, Object> m = new HashMap<>();
                 m.put("title", p.getCaption());
                 m.put("views", p.getViewCount());
@@ -109,7 +109,10 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
                 m.put("date", p.getTimestamp() != null ? p.getTimestamp().toString() : "");
                 m.put("type", p.getVideoType());
                 return m;
-            }).toList();
+            }).toList());
+            
+            // Reverse the array so AI reads from oldest to newest (chronological) to prevent hallucinating downward trends
+            java.util.Collections.reverse(postsMeta);
             
             // Calculate growth rate using Median (to filter out extreme viral outliers)
             double growthRate = 0.0;

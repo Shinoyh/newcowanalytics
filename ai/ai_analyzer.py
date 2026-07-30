@@ -20,6 +20,8 @@ def download_short_video(video_id):
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", out_file
         ]
+        if os.path.exists("cookies.txt"):
+            cmd.extend(["--cookies", "cookies.txt"])
         try:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
@@ -39,6 +41,8 @@ def download_long_video_assets(video_id):
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", intro_file
         ]
+        if os.path.exists("cookies.txt"):
+            cmd_intro.extend(["--cookies", "cookies.txt"])
         try:
             subprocess.run(cmd_intro, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
@@ -55,6 +59,8 @@ def download_long_video_assets(video_id):
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", audio_file
         ]
+        if os.path.exists("cookies.txt"):
+            cmd_audio.extend(["--cookies", "cookies.txt"])
         try:
             subprocess.run(cmd_audio, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
@@ -182,7 +188,7 @@ def analyze_channel(api_key, metadata_json_str):
     
     config = types.GenerateContentConfig(
         system_instruction="""You are an expert YouTube Channel Growth Strategist.
-I will provide you with a JSON array of the channel's most recent posts (videos), ordered from newest to oldest, along with the channel's mathematical recent growth rate in 'calculatedGrowthRate' (a percentage comparing the first half of recent posts to the second half).
+I will provide you with a JSON array of the channel's most recent posts (videos), ordered chronologically from oldest to newest (index 0 is the oldest in the dataset, the last index is the newest), along with the channel's mathematical recent growth rate in 'calculatedGrowthRate' (a percentage comparing the first half of recent posts to the second half).
 Your task is to analyze this data and provide a macroscopic report explaining why the channel's growth rate is positive or negative, and what content topics or strategies are driving the channel's performance.
 
 ### CRITICAL INSTRUCTION ON TREND ###
