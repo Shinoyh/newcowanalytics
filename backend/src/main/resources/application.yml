@@ -16,7 +16,7 @@ spring:
 
   sql:
     init:
-      mode: always # Executes schema.sql on startup if present
+      mode: never # Let Hibernate handle schema instead of schema.sql
 
 # Custom properties for external APIs
 app:
