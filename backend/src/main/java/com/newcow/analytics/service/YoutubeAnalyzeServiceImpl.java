@@ -163,6 +163,15 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
                 JsonNode statsRoot = objectMapper.readTree(statsResponse.getBody());
 
                 JsonNode statsItems = statsRoot.path("items");
+                
+                // Fetch existing posts for this batch in a single query
+                List<String> currentBatchVideoIds = new java.util.ArrayList<>();
+                for (int i = 0; i < statsItems.size(); i++) {
+                    currentBatchVideoIds.add(statsItems.get(i).path("id").asText());
+                }
+                List<SocialMediaPost> existingPosts = postRepository.findByUserIdAndAccountAndPlatformPostIdIn(account.getUserId(), account, currentBatchVideoIds);
+                java.util.Map<String, SocialMediaPost> existingPostMap = existingPosts.stream().collect(java.util.stream.Collectors.toMap(SocialMediaPost::getPlatformPostId, p -> p));
+
                 for (int i = 0; i < statsItems.size(); i++) {
                     JsonNode statsItem = statsItems.get(i);
                     String videoId = statsItem.path("id").asText();
@@ -191,12 +200,11 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
                     LocalDateTime timestamp = Instant.parse(publishedAtStr).atZone(ZoneId.systemDefault())
                             .toLocalDateTime();
 
-                    Optional<SocialMediaPost> existingPostOpt = postRepository.findByUserIdAndAccountAndPlatformPostId(account.getUserId(), account,
-                            videoId);
+                    SocialMediaPost existingPost = existingPostMap.get(videoId);
 
                     SocialMediaPost post;
-                    if (existingPostOpt.isPresent()) {
-                        post = existingPostOpt.get();
+                    if (existingPost != null) {
+                        post = existingPost;
                         post.setLikeCount(likeCount);
                         post.setCommentsCount(commentCount);
                         post.setViewCount(viewCount);

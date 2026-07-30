@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface SocialMediaPostRepository extends JpaRepository<SocialMediaPost, Long> {
     Optional<SocialMediaPost> findByUserIdAndAccountAndPlatformPostId(String userId, SocialAccount account, String platformPostId);
+    List<SocialMediaPost> findByUserIdAndAccountAndPlatformPostIdIn(String userId, SocialAccount account, List<String> platformPostIds);
     List<SocialMediaPost> findByUserIdAndAccountOrderByTimestampDesc(String userId, SocialAccount account);
     void deleteByUserIdAndAccount(String userId, SocialAccount account);
 }

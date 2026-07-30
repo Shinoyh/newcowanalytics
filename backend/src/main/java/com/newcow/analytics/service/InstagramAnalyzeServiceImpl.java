@@ -132,10 +132,13 @@ public class InstagramAnalyzeServiceImpl implements SocialMediaAnalyzeService {
             apiPosts = getMockData(account);
         }
 
-        List<SocialMediaPost> savedPosts = new ArrayList<>();
+        List<String> apiPostIds = apiPosts.stream().map(SocialMediaPost::getPlatformPostId).toList();
+        List<SocialMediaPost> existingPosts = postRepository.findByUserIdAndAccountAndPlatformPostIdIn(account.getUserId(), account, apiPostIds);
+        java.util.Map<String, SocialMediaPost> existingPostMap = existingPosts.stream().collect(java.util.stream.Collectors.toMap(SocialMediaPost::getPlatformPostId, p -> p));
+
+        List<SocialMediaPost> postsToSave = new ArrayList<>();
         for (SocialMediaPost apiPost : apiPosts) {
-            SocialMediaPost existingPost = postRepository.findByUserIdAndAccountAndPlatformPostId(account.getUserId(), account, apiPost.getPlatformPostId())
-                    .orElse(null);
+            SocialMediaPost existingPost = existingPostMap.get(apiPost.getPlatformPostId());
 
             int likes = apiPost.getLikeCount() != null ? apiPost.getLikeCount() : 0;
             int comments = apiPost.getCommentsCount() != null ? apiPost.getCommentsCount() : 0;
@@ -147,19 +150,21 @@ public class InstagramAnalyzeServiceImpl implements SocialMediaAnalyzeService {
                 existingPost.setCommentsCount(comments);
                 existingPost.setEngagement(engagement);
                 existingPost.setCaption(apiPost.getCaption());
-                savedPosts.add(postRepository.save(existingPost));
+                postsToSave.add(existingPost);
             } else {
                 // Insert
                 apiPost.setLikeCount(likes);
                 apiPost.setCommentsCount(comments);
                 apiPost.setEngagement(engagement);
-                savedPosts.add(postRepository.save(apiPost));
+                postsToSave.add(apiPost);
             }
         }
         
+        postRepository.saveAll(postsToSave);
+        
         // Return descending order
-        savedPosts.sort((p1, p2) -> p2.getTimestamp().compareTo(p1.getTimestamp()));
-        return savedPosts;
+        postsToSave.sort((p1, p2) -> p2.getTimestamp().compareTo(p1.getTimestamp()));
+        return postsToSave;
     }
 
     private SocialAccountDataDto mapToDto(SocialAccount account, List<SocialMediaPost> posts) {
