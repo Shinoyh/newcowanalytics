@@ -200,7 +200,7 @@ IMPORTANT: If you use double quotes inside a string value, you MUST escape them 
                 wait_for_files_active(client, uploaded_files)
                 print(f"[INFO] Phase 3: Generating content with Gemini AI...", flush=True)
                 prompt += "Please analyze the attached short-form video in its entirety."
-                response = client.models.generate_content(model='gemini-1.5-pro', contents=[uploaded_files[0], prompt], config=config)
+                response = client.models.generate_content(model='gemini-3.5-flash', contents=[uploaded_files[0], prompt], config=config)
                 print(f"[INFO] Phase 3 Completed. AI Response received.", flush=True)
             else:
                 intro_file = f"{video_id}_intro.mp4"
@@ -215,7 +215,7 @@ IMPORTANT: If you use double quotes inside a string value, you MUST escape them 
                 wait_for_files_active(client, uploaded_files)
                 print(f"[INFO] Phase 3: Generating content with Gemini AI...", flush=True)
                 prompt += "Please analyze the attached video. The first file is the first 2 minutes of the video (intro). The second file is the audio track for the entire 30+ minute video. Use the intro video to analyze the visual hook, and the full audio to understand the complete context and storyline."
-                response = client.models.generate_content(model='gemini-1.5-pro', contents=[uploaded_files[0], uploaded_files[1], prompt], config=config)
+                response = client.models.generate_content(model='gemini-3.5-flash', contents=[uploaded_files[0], uploaded_files[1], prompt], config=config)
                 print(f"[INFO] Phase 3 Completed. AI Response received.", flush=True)
 
             clean_json = response.text.replace('```json', '').replace('```', '').strip()
@@ -273,7 +273,7 @@ Under NO CIRCUMSTANCES should you output the placeholder text from the JSON SCHE
     
     prompt = f"Here is the recent posts metadata for the channel:\n{metadata_json_str}\n\nPlease analyze the channel trend based on this data."
     print(f"[INFO] Phase 1: Generating channel analysis with Gemini AI...", flush=True)
-    response = client.models.generate_content(model='gemini-1.5-pro', contents=prompt, config=config)
+    response = client.models.generate_content(model='gemini-3.5-flash', contents=prompt, config=config)
     print(f"[INFO] Phase 1 Completed. AI Response received.", flush=True)
     clean_json = response.text.replace('```json', '').replace('```', '').strip()
     print(clean_json)
