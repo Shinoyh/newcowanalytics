@@ -26,6 +26,10 @@ def download_short_video(video_id):
         cmd = [
             "yt-dlp", 
             "--no-warnings",
+            "--retries", "3",
+            "--fragment-retries", "3",
+            "--abort-on-error",
+            "--socket-timeout", "30",
             "-f", "bestvideo+bestaudio/best",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
@@ -34,8 +38,11 @@ def download_short_video(video_id):
         cookies = get_cookies_file()
         if cookies:
             cmd.extend(["--cookies", cookies])
+        
+        print(f"[INFO] [Short] Starting yt-dlp download for {video_id}...", flush=True)
         try:
             subprocess.run(cmd, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+            print(f"[INFO] [Short] Download completed successfully.", flush=True)
         except subprocess.CalledProcessError as e:
             raise Exception(f"yt-dlp failed: {e.stderr}")
     return out_file
@@ -47,6 +54,10 @@ def download_long_video_assets(video_id):
         cmd_intro = [
             "yt-dlp",
             "--no-warnings",
+            "--retries", "3",
+            "--fragment-retries", "3",
+            "--abort-on-error",
+            "--socket-timeout", "30",
             "-f", "bestvideo+bestaudio/best",
             "--download-sections", "*00:00:00-00:02:00",
             "--merge-output-format", "mp4",
@@ -56,8 +67,11 @@ def download_long_video_assets(video_id):
         cookies = get_cookies_file()
         if cookies:
             cmd_intro.extend(["--cookies", cookies])
+        
+        print(f"[INFO] [Long-Intro] Starting yt-dlp download for {video_id}...", flush=True)
         try:
             subprocess.run(cmd_intro, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+            print(f"[INFO] [Long-Intro] Download completed successfully.", flush=True)
         except subprocess.CalledProcessError as e:
             raise Exception(f"yt-dlp intro download failed: {e.stderr}")
         
@@ -67,6 +81,10 @@ def download_long_video_assets(video_id):
         cmd_audio = [
             "yt-dlp",
             "--no-warnings",
+            "--retries", "3",
+            "--fragment-retries", "3",
+            "--abort-on-error",
+            "--socket-timeout", "30",
             "-f", "bestaudio/best",
             "-x", "--audio-format", "mp3",
             f"https://www.youtube.com/watch?v={video_id}",
@@ -75,8 +93,11 @@ def download_long_video_assets(video_id):
         cookies = get_cookies_file()
         if cookies:
             cmd_audio.extend(["--cookies", cookies])
+        
+        print(f"[INFO] [Long-Audio] Starting yt-dlp download for {video_id}...", flush=True)
         try:
             subprocess.run(cmd_audio, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+            print(f"[INFO] [Long-Audio] Download completed successfully.", flush=True)
         except subprocess.CalledProcessError as e:
             raise Exception(f"yt-dlp audio download failed: {e.stderr}")
             
@@ -84,11 +105,19 @@ def download_long_video_assets(video_id):
 
 def wait_for_files_active(client, files):
     for f in files:
+        print(f"[INFO] Waiting for Google Gemini to process file {f.name}...", flush=True)
+        wait_time = 0
         while f.state.name == 'PROCESSING':
+            if wait_time >= 180:
+                raise Exception(f"Google Gemini file processing timed out after 3 minutes for {f.name}")
+            if wait_time > 0 and wait_time % 10 == 0:
+                print(f"[INFO] File {f.name} state is still PROCESSING ({wait_time}초 경과...)", flush=True)
             time.sleep(2)
+            wait_time += 2
             f = client.files.get(name=f.name)
         if f.state.name == 'FAILED':
-            raise Exception("File processing failed")
+            raise Exception(f"Google Gemini file processing FAILED for {f.name}")
+        print(f"[INFO] File {f.name} successfully processed (ACTIVE).", flush=True)
 
 def analyze_video(api_key, video_id, video_type, metadata_json_str, step):
     client = genai.Client(api_key=api_key)
@@ -145,16 +174,19 @@ IMPORTANT: If you use double quotes inside a string value, you MUST escape them 
 
     try:
         if step == "download" or step == "all":
+            print(f"[INFO] Phase 1: Downloading video {video_id} (type: {video_type})...", flush=True)
             if video_type.upper() == "SHORT":
                 download_short_video(video_id)
             else:
                 download_long_video_assets(video_id)
-                
+            print(f"[INFO] Phase 1 Completed.", flush=True)
+            
             if step == "download":
                 print(json.dumps({"status": "downloaded"}))
                 return
 
         if step == "analyze" or step == "all":
+            print(f"[INFO] Phase 2: Uploading files to Gemini API...", flush=True)
             if video_type.upper() == "SHORT":
                 vid_file = f"{video_id}_short.mp4"
                 if not os.path.exists(vid_file):
@@ -162,9 +194,12 @@ IMPORTANT: If you use double quotes inside a string value, you MUST escape them 
                 print(f"Uploading {vid_file}...", file=sys.stderr)
                 gemini_file = client.files.upload(file=vid_file)
                 uploaded_files.append(gemini_file)
+                
                 wait_for_files_active(client, uploaded_files)
+                print(f"[INFO] Phase 3: Generating content with Gemini AI...", flush=True)
                 prompt += "Please analyze the attached short-form video in its entirety."
-                response = client.models.generate_content(model='gemini-3.5-flash', contents=[uploaded_files[0], prompt], config=config)
+                response = client.models.generate_content(model='gemini-1.5-pro', contents=[uploaded_files[0], prompt], config=config)
+                print(f"[INFO] Phase 3 Completed. AI Response received.", flush=True)
             else:
                 intro_file = f"{video_id}_intro.mp4"
                 audio_file = f"{video_id}_full.mp3"
@@ -174,9 +209,12 @@ IMPORTANT: If you use double quotes inside a string value, you MUST escape them 
                 gemini_intro = client.files.upload(file=intro_file)
                 gemini_audio = client.files.upload(file=audio_file)
                 uploaded_files.extend([gemini_intro, gemini_audio])
+                
                 wait_for_files_active(client, uploaded_files)
+                print(f"[INFO] Phase 3: Generating content with Gemini AI...", flush=True)
                 prompt += "Please analyze the attached video. The first file is the first 2 minutes of the video (intro). The second file is the audio track for the entire 30+ minute video. Use the intro video to analyze the visual hook, and the full audio to understand the complete context and storyline."
-                response = client.models.generate_content(model='gemini-3.5-flash', contents=[uploaded_files[0], uploaded_files[1], prompt], config=config)
+                response = client.models.generate_content(model='gemini-1.5-pro', contents=[uploaded_files[0], uploaded_files[1], prompt], config=config)
+                print(f"[INFO] Phase 3 Completed. AI Response received.", flush=True)
 
             clean_json = response.text.replace('```json', '').replace('```', '').strip()
             print(clean_json)
@@ -232,7 +270,9 @@ Under NO CIRCUMSTANCES should you output the placeholder text from the JSON SCHE
     )
     
     prompt = f"Here is the recent posts metadata for the channel:\n{metadata_json_str}\n\nPlease analyze the channel trend based on this data."
-    response = client.models.generate_content(model='gemini-3.5-flash', contents=prompt, config=config)
+    print(f"[INFO] Phase 1: Generating channel analysis with Gemini AI...", flush=True)
+    response = client.models.generate_content(model='gemini-1.5-pro', contents=prompt, config=config)
+    print(f"[INFO] Phase 1 Completed. AI Response received.", flush=True)
     clean_json = response.text.replace('```json', '').replace('```', '').strip()
     print(clean_json)
 

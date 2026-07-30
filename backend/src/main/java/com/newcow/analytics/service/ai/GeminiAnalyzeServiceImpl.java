@@ -120,13 +120,22 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
                 int mid = recentPosts.size() / 2;
                 List<SocialMediaPost> recentHalf = recentPosts.subList(0, mid);
                 List<SocialMediaPost> pastHalf = recentPosts.subList(mid, recentPosts.size());
-        
-                double recentMedian = calculateMedian(recentHalf);
-                double pastMedian = calculateMedian(pastHalf);
-        
-                if (pastMedian != 0) {
-                    growthRate = ((recentMedian - pastMedian) / pastMedian) * 100.0;
+
+                double recentViewsMedian = calculateMedian(recentHalf, true);
+                double pastViewsMedian = calculateMedian(pastHalf, true);
+                double viewsGrowth = 0.0;
+                if (pastViewsMedian > 0) {
+                    viewsGrowth = ((recentViewsMedian - pastViewsMedian) / pastViewsMedian) * 100.0;
                 }
+
+                double recentEngMedian = calculateMedian(recentHalf, false);
+                double pastEngMedian = calculateMedian(pastHalf, false);
+                double engGrowth = 0.0;
+                if (pastEngMedian > 0) {
+                    engGrowth = ((recentEngMedian - pastEngMedian) / pastEngMedian) * 100.0;
+                }
+                
+                growthRate = (viewsGrowth * 0.7) + (engGrowth * 0.3);
             }
             
             payload.put("recentPosts", postsMeta);
@@ -175,10 +184,16 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
         }
     }
 
-    private double calculateMedian(List<SocialMediaPost> halfPosts) {
+    private double calculateMedian(List<SocialMediaPost> halfPosts, boolean useViews) {
         if (halfPosts.isEmpty()) return 0.0;
-        List<Integer> sorted = halfPosts.stream()
-                .map(p -> p.getEngagement() != null ? p.getEngagement() : 0)
+        List<Double> sorted = halfPosts.stream()
+                .map(p -> {
+                    if (useViews) {
+                        return p.getViewCount() != null ? p.getViewCount().doubleValue() : 0.0;
+                    } else {
+                        return p.getEngagement() != null ? p.getEngagement().doubleValue() : 0.0;
+                    }
+                })
                 .sorted()
                 .collect(Collectors.toList());
         int size = sorted.size();
