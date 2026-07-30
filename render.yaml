@@ -1,6 +1,7 @@
 services:
   - type: web
     name: newcow-backend
+    region: singapore
     env: docker
     plan: free
     envVars:
