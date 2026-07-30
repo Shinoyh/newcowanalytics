@@ -13,7 +13,7 @@ def download_short_video(video_id):
     out_file = f"{video_id}_short.mp4"
     if not os.path.exists(out_file):
         cmd = [
-            ".\\yt-dlp.exe", 
+            "yt-dlp", 
             "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
@@ -27,7 +27,7 @@ def download_long_video_assets(video_id):
     intro_file = f"{video_id}_intro.mp4"
     if not os.path.exists(intro_file):
         cmd_intro = [
-            ".\\yt-dlp.exe",
+            "yt-dlp",
             "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "--download-sections", "*00:00:00-00:02:00",
             "--merge-output-format", "mp4",
@@ -40,7 +40,7 @@ def download_long_video_assets(video_id):
     audio_file = f"{video_id}_full.mp3"
     if not os.path.exists(audio_file):
         cmd_audio = [
-            ".\\yt-dlp.exe",
+            "yt-dlp",
             "-f", "bestaudio/best",
             "-x", "--audio-format", "mp3",
             f"https://www.youtube.com/watch?v={video_id}",
