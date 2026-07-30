@@ -25,7 +25,6 @@ def download_short_video(video_id):
     if not os.path.exists(out_file):
         cmd = [
             "yt-dlp", 
-            "--no-interactive",
             "--extractor-args", "youtube:player_client=ios,android",
             "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "--merge-output-format", "mp4",
@@ -47,7 +46,6 @@ def download_long_video_assets(video_id):
     if not os.path.exists(intro_file):
         cmd_intro = [
             "yt-dlp",
-            "--no-interactive",
             "--extractor-args", "youtube:player_client=ios,android",
             "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "--download-sections", "*00:00:00-00:02:00",
@@ -68,7 +66,6 @@ def download_long_video_assets(video_id):
     if not os.path.exists(audio_file):
         cmd_audio = [
             "yt-dlp",
-            "--no-interactive",
             "--extractor-args", "youtube:player_client=ios,android",
             "-f", "bestaudio/best",
             "-x", "--audio-format", "mp3",
