@@ -33,11 +33,8 @@ def download_short_video(video_id):
         cmd = [
             "yt-dlp", 
             "--no-warnings",
-            "--retries", "3",
-            "--fragment-retries", "3",
-            "--abort-on-error",
-            "--socket-timeout", "30",
-            "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "--extractor-args", "youtube:player_client=ios,android",
+            "-f", "bestvideo+bestaudio/best",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", out_file
@@ -61,11 +58,8 @@ def download_long_video_assets(video_id):
         cmd_intro = [
             "yt-dlp",
             "--no-warnings",
-            "--retries", "3",
-            "--fragment-retries", "3",
-            "--abort-on-error",
-            "--socket-timeout", "30",
-            "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "--extractor-args", "youtube:player_client=ios,android",
+            "-f", "bestvideo+bestaudio/best",
             "--download-sections", "*00:00:00-00:02:00",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
@@ -88,10 +82,7 @@ def download_long_video_assets(video_id):
         cmd_audio = [
             "yt-dlp",
             "--no-warnings",
-            "--retries", "3",
-            "--fragment-retries", "3",
-            "--abort-on-error",
-            "--socket-timeout", "30",
+            "--extractor-args", "youtube:player_client=ios,android",
             "-f", "bestaudio/best",
             "-x", "--audio-format", "mp3",
             f"https://www.youtube.com/watch?v={video_id}",
@@ -281,7 +272,11 @@ Under NO CIRCUMSTANCES should you output the placeholder text from the JSON SCHE
     response = client.models.generate_content(model='gemini-3.5-flash', contents=prompt, config=config)
     print(f"[INFO] Phase 1 Completed. AI Response received.", flush=True)
     clean_json = response.text.replace('```json', '').replace('```', '').strip()
-    print(clean_json)
+    try:
+        parsed = json.loads(clean_json, strict=False)
+        print(json.dumps(parsed, ensure_ascii=False))
+    except Exception as e:
+        print(clean_json)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
