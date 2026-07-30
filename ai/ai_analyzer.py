@@ -8,6 +8,8 @@ from google.genai import types
 import argparse
 import base64
 
+import shutil
+
 def get_cookies_file():
     paths = [
         "cookies.txt",
@@ -16,6 +18,11 @@ def get_cookies_file():
     ]
     for path in paths:
         if os.path.exists(path):
+            if path == "/etc/secrets/cookies.txt":
+                tmp_path = "/tmp/cookies.txt"
+                if not os.path.exists(tmp_path):
+                    shutil.copy2(path, tmp_path)
+                return tmp_path
             return path
     return None
 
@@ -31,7 +38,7 @@ def download_short_video(video_id):
             "--abort-on-error",
             "--socket-timeout", "30",
             "-S", "res:480",
-            "-f", "bestvideo+bestaudio/best",
+            "-f", "b/best",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", out_file
@@ -60,7 +67,7 @@ def download_long_video_assets(video_id):
             "--abort-on-error",
             "--socket-timeout", "30",
             "-S", "res:480",
-            "-f", "bestvideo+bestaudio/best",
+            "-f", "b/best",
             "--download-sections", "*00:00:00-00:02:00",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
