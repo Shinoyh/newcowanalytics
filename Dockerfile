@@ -12,6 +12,7 @@ COPY backend/settings.gradle backend/
 WORKDIR /app/backend
 
 # Download dependencies (this caches them for faster subsequent builds)
+RUN chmod +x ./gradlew
 RUN ./gradlew dependencies --no-daemon || true
 
 # Copy the actual source code
