@@ -40,7 +40,7 @@ public class AiBatchService {
         String errMsg = e.getMessage() != null ? e.getMessage() : e.toString();
         
         String translatedMsg;
-        if (errMsg.contains("403 Forbidden") || errMsg.contains("access denied") || errMsg.contains("Sign in to confirm you’re not a bot")) {
+        if (errMsg.contains("403 Forbidden") || errMsg.contains("access denied") || errMsg.contains("Sign in to confirm")) {
             translatedMsg = "[ERR_YOUTUBE_BLOCK] 유튜브 정책(연령 제한 또는 차단)에 의해 영상 추출이 거부되었습니다.";
         } else if (errMsg.contains("429") || errMsg.contains("quota") || errMsg.contains("Rate limit")) {
             translatedMsg = "[ERR_QUOTA_EXCEEDED] 구글 AI 일일 사용량을 초과했거나 요청이 너무 많습니다.";
@@ -76,7 +76,10 @@ public class AiBatchService {
                 jobStatusMap.put(postId, "DOWNLOADING");
                 log.info("Started downloading for post {}", postId);
                 
-                geminiAnalyzeService.analyzeVideoWithStep(post, "download");
+                String downloadResult = geminiAnalyzeService.analyzeVideoWithStep(post, "download");
+                if (downloadResult != null && downloadResult.contains("\"error\"")) {
+                    throw new RuntimeException("Download failed: " + downloadResult);
+                }
                 
                 // Once downloaded, submit to analyze queue
                 jobStatusMap.put(postId, "WAITING_ANALYZE");

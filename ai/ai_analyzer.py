@@ -19,7 +19,10 @@ def download_short_video(video_id):
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", out_file
         ]
-        subprocess.run(cmd, check=True)
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"yt-dlp failed: {e.stderr}")
     return out_file
 
 def download_long_video_assets(video_id):
@@ -34,7 +37,10 @@ def download_long_video_assets(video_id):
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", intro_file
         ]
-        subprocess.run(cmd_intro, check=True)
+        try:
+            subprocess.run(cmd_intro, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"yt-dlp intro download failed: {e.stderr}")
         
     # Download full audio
     audio_file = f"{video_id}_full.mp3"
@@ -46,8 +52,11 @@ def download_long_video_assets(video_id):
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", audio_file
         ]
-        subprocess.run(cmd_audio, check=True)
-        
+        try:
+            subprocess.run(cmd_audio, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"yt-dlp audio download failed: {e.stderr}")
+            
     return intro_file, audio_file
 
 def wait_for_files_active(client, files):
