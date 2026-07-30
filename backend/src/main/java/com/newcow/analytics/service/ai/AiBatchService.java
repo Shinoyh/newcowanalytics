@@ -89,7 +89,9 @@ public class AiBatchService {
                         String resultJson = geminiAnalyzeService.analyzeVideoWithStep(post, "analyze");
                         
                         // Save back to DB
-                        if (resultJson != null && resultJson.trim().startsWith("{") && !resultJson.contains("\"error\"")) {
+                        if (resultJson != null && resultJson.trim().startsWith("{") 
+                                && !resultJson.contains("\"error\"") 
+                                && !resultJson.contains("첫 번째 줄 요약")) {
                             post.setAiAnalysisResult(resultJson);
                             postRepository.save(post);
                             jobStatusMap.put(postId, "COMPLETED");

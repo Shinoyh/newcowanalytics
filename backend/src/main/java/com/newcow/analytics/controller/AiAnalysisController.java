@@ -57,20 +57,24 @@ public class AiAnalysisController {
 
     @PostMapping(value = "/channel/{platform}/{username}", produces = "application/json;charset=UTF-8")
     public ResponseEntity<String> analyzeChannel(
+            @RequestHeader("X-User-Id") String userId,
             @PathVariable String platform,
             @PathVariable String username,
             @RequestParam(required = false, defaultValue = "false") boolean forceRefresh) {
             
         String cleanUsername = username.startsWith("@") ? username : "@" + username;
         SocialAccount account = accountRepository
-                .findByUsernameAndPlatform(cleanUsername, platform.toUpperCase())
+                .findByUserIdAndUsernameAndPlatform(userId, cleanUsername, platform.toUpperCase())
                 .orElseThrow(() -> new RuntimeException("Account not found"));
                 
         if (!forceRefresh && account.getAiAnalysisResult() != null && !account.getAiAnalysisResult().trim().isEmpty()) {
-            return ResponseEntity.ok(account.getAiAnalysisResult());
+            String existingResult = account.getAiAnalysisResult();
+            if (!existingResult.contains("\"error\"") && !existingResult.contains("상승세 / 하락세 / 정체기")) {
+                return ResponseEntity.ok(existingResult);
+            }
         }
                 
-        List<SocialMediaPost> recentPosts = postRepository.findByAccountOrderByTimestampDesc(account);
+        List<SocialMediaPost> recentPosts = postRepository.findByUserIdAndAccountOrderByTimestampDesc(userId, account);
         // Take top 50
         if (recentPosts.size() > 50) {
             recentPosts = recentPosts.subList(0, 50);
@@ -78,8 +82,10 @@ public class AiAnalysisController {
         
         String resultJson = aiAnalysisService.analyzeChannelTrend(account, recentPosts);
         
-        // Save back to DB if it doesn't look like an error
-        if (resultJson != null && resultJson.trim().startsWith("{") && !resultJson.contains("\"error\"")) {
+        // Save back to DB if it doesn't look like an error and is not a template
+        if (resultJson != null && resultJson.trim().startsWith("{") 
+                && !resultJson.contains("\"error\"") 
+                && !resultJson.contains("상승세 / 하락세 / 정체기")) {
             account.setAiAnalysisResult(resultJson);
             accountRepository.save(account);
         }

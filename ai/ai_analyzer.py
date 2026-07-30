@@ -179,6 +179,9 @@ You MUST base your "growth_trend" response primarily on the 'calculatedGrowthRat
 ### LANGUAGE REQUIREMENT ###
 CRITICAL: All string values, descriptions, summaries, and feedback inside the JSON object MUST be written in fluent and natural Korean. The JSON keys must remain in English.
 
+### CRITICAL: DO NOT ECHO THE TEMPLATE ###
+Under NO CIRCUMSTANCES should you output the placeholder text from the JSON SCHEMA below (such as "상승세 / 하락세 / 정체기 (한국어)", "최근 50~100개 포스트 데이터를 분석하여...", "요인 1 (한국어)"). You MUST generate ACTUAL, REAL insights based on the provided metadata. If you output the placeholder text, the system will fail.
+
 ### OUTPUT JSON SCHEMA ###
 {
   "growth_trend": "상승세 / 하락세 / 정체기 (한국어)",

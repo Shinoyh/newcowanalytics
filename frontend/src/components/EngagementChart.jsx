@@ -23,23 +23,7 @@ const EngagementChart = ({ data, onChartClick }) => {
 
         if (filteredData.length === 0) return [];
 
-        // 2. Aggregate data based on viewMode
-        if (viewMode === 'daily') {
-            return filteredData.map(post => {
-                const d = new Date(post.timestamp);
-                return {
-                    label: `${d.getMonth() + 1}/${d.getDate()}`,
-                    fullDate: d.toLocaleDateString(),
-                    engagement: post.engagement,
-                    likes: post.likeCount,
-                    comments: post.commentsCount,
-                    count: 1,
-                    posts: [post]
-                };
-            });
-        }
-
-        // Grouping logic for weekly/monthly
+        // Grouping logic for daily/weekly/monthly
         const groups = {};
 
         filteredData.forEach(post => {
@@ -48,7 +32,11 @@ const EngagementChart = ({ data, onChartClick }) => {
             let label = '';
             let fullDate = '';
 
-            if (viewMode === 'weekly') {
+            if (viewMode === 'daily') {
+                key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+                label = `${d.getMonth() + 1}/${d.getDate()}`;
+                fullDate = d.toLocaleDateString();
+            } else if (viewMode === 'weekly') {
                 // Get week number (rough approximation for grouping)
                 const firstDayOfYear = new Date(d.getFullYear(), 0, 1);
                 const pastDaysOfYear = (d.getTime() - firstDayOfYear.getTime()) / 86400000;
@@ -99,13 +87,11 @@ const EngagementChart = ({ data, onChartClick }) => {
                     boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
                 }}>
                     <p style={{ margin: 0, fontWeight: 'bold', color: '#a0aec0' }}>{pointData.fullDate}</p>
-                    {viewMode !== 'daily' && (
-                        <p style={{ margin: '4px 0', fontSize: '0.8rem', color: '#a0aec0' }}>
-                            Posts in period: {pointData.count}
-                        </p>
-                    )}
+                    <p style={{ margin: '4px 0', fontSize: '0.8rem', color: '#a0aec0' }}>
+                        Posts in period: {pointData.count}
+                    </p>
                     <p style={{ margin: '8px 0', fontSize: '1.2rem', color: '#3b82f6' }}>
-                        {viewMode === 'daily' ? 'Engagement:' : 'Avg Engagement:'} <strong>{pointData.engagement.toLocaleString()}</strong>
+                        {viewMode === 'daily' ? 'Avg Engagement:' : 'Avg Engagement:'} <strong>{pointData.engagement.toLocaleString()}</strong>
                     </p>
                     <p style={{ margin: '4px 0', fontSize: '0.85rem' }}>Likes: {pointData.likes.toLocaleString()}</p>
                     <p style={{ margin: '4px 0', fontSize: '0.85rem' }}>Comments: {pointData.comments.toLocaleString()}</p>

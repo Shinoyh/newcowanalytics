@@ -40,9 +40,10 @@ public class InstagramAnalyzeServiceImpl implements SocialMediaAnalyzeService {
 
     @Override
     @Transactional
-    public SocialAccountDataDto analyzeAccount(String username) {
-        SocialAccount account = accountRepository.findByUsernameAndPlatform(username, PLATFORM)
+    public SocialAccountDataDto analyzeAccount(String userId, String username) {
+        SocialAccount account = accountRepository.findByUserIdAndUsernameAndPlatform(userId, username, PLATFORM)
                 .orElseGet(() -> accountRepository.save(SocialAccount.builder()
+                        .userId(userId)
                         .username(username)
                         .platform(PLATFORM)
                         .build()));
@@ -53,17 +54,17 @@ public class InstagramAnalyzeServiceImpl implements SocialMediaAnalyzeService {
 
     @Override
     @Transactional(readOnly = true)
-    public SocialAccountDataDto getAccountData(String username) {
-        SocialAccount account = accountRepository.findByUsernameAndPlatform(username, PLATFORM)
+    public SocialAccountDataDto getAccountData(String userId, String username) {
+        SocialAccount account = accountRepository.findByUserIdAndUsernameAndPlatform(userId, username, PLATFORM)
                 .orElseThrow(() -> new RuntimeException("Account not found in database: " + username));
         
-        List<SocialMediaPost> posts = postRepository.findByAccountOrderByTimestampDesc(account);
+        List<SocialMediaPost> posts = postRepository.findByUserIdAndAccountOrderByTimestampDesc(userId, account);
         return mapToDto(account, posts);
     }
 
     @Override
-    public List<com.newcow.analytics.dto.ChannelSearchDto> searchChannels(String query) {
-        List<SocialAccount> accounts = accountRepository.findByUsernameContainingIgnoreCaseAndPlatform(query, PLATFORM);
+    public List<com.newcow.analytics.dto.ChannelSearchDto> searchChannels(String userId, String query) {
+        List<SocialAccount> accounts = accountRepository.findByUserIdAndUsernameContainingIgnoreCaseAndPlatform(userId, query, PLATFORM);
         return accounts.stream().map(a -> com.newcow.analytics.dto.ChannelSearchDto.builder()
                 .username(a.getUsername())
                 .platform(a.getPlatform())
@@ -109,6 +110,7 @@ public class InstagramAnalyzeServiceImpl implements SocialMediaAnalyzeService {
                     String caption = mediaNode.has("caption") ? mediaNode.get("caption").asText() : "";
                     
                     apiPosts.add(SocialMediaPost.builder()
+                            .userId(account.getUserId())
                             .account(account)
                             .platformPostId(id)
                             .timestamp(timestamp)
@@ -132,7 +134,7 @@ public class InstagramAnalyzeServiceImpl implements SocialMediaAnalyzeService {
 
         List<SocialMediaPost> savedPosts = new ArrayList<>();
         for (SocialMediaPost apiPost : apiPosts) {
-            SocialMediaPost existingPost = postRepository.findByAccountAndPlatformPostId(account, apiPost.getPlatformPostId())
+            SocialMediaPost existingPost = postRepository.findByUserIdAndAccountAndPlatformPostId(account.getUserId(), account, apiPost.getPlatformPostId())
                     .orElse(null);
 
             int likes = apiPost.getLikeCount() != null ? apiPost.getLikeCount() : 0;
@@ -250,6 +252,7 @@ public class InstagramAnalyzeServiceImpl implements SocialMediaAnalyzeService {
             };
 
             mockPosts.add(SocialMediaPost.builder()
+                    .userId(account.getUserId())
                     .account(account)
                     .platformPostId("mock_post_" + i)
                     .platform("INSTAGRAM")

@@ -1,10 +1,29 @@
 import axios from 'axios';
 
+// UUID 생성 및 관리 (localStorage)
+const getOrCreateUserId = () => {
+    let userId = localStorage.getItem('newcow_user_id');
+    if (!userId) {
+        userId = crypto.randomUUID();
+        localStorage.setItem('newcow_user_id', userId);
+    }
+    return userId;
+};
+
 const api = axios.create({
-    baseURL: 'http://localhost:8080/api/analytics',
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api/analytics',
     headers: {
         'Content-Type': 'application/json',
     },
+});
+
+// 요청 인터셉터를 통해 모든 요청에 X-User-Id 헤더 추가
+api.interceptors.request.use((config) => {
+    const userId = getOrCreateUserId();
+    config.headers['X-User-Id'] = userId;
+    return config;
+}, (error) => {
+    return Promise.reject(error);
 });
 
 export const socialAnalyticsApi = {

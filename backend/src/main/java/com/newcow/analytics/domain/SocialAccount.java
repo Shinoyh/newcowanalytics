@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "social_account", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_username_platform", columnNames = {"username", "platform"})
+        @UniqueConstraint(name = "uk_user_username_platform", columnNames = {"user_id", "username", "platform"})
 })
 @Getter
 @Setter
@@ -21,6 +21,9 @@ public class SocialAccount {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "user_id", nullable = false)
+    private String userId;
 
     @Column(nullable = false)
     private String username;

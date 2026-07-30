@@ -24,21 +24,23 @@ public class SocialAnalyticsController {
 
     @GetMapping("/{platform}/analyze/{username}")
     public ResponseEntity<SocialAccountDataDto> analyzeAccount(
+            @RequestHeader("X-User-Id") String userId,
             @PathVariable String platform,
             @PathVariable String username) {
         
         SocialMediaAnalyzeService service = getService(platform);
-        return ResponseEntity.ok(service.analyzeAccount(username));
+        return ResponseEntity.ok(service.analyzeAccount(userId, username));
     }
 
     @GetMapping("/{platform}/data/{username}")
     public ResponseEntity<SocialAccountDataDto> getAccountData(
+            @RequestHeader("X-User-Id") String userId,
             @PathVariable String platform,
             @PathVariable String username) {
         
         SocialMediaAnalyzeService service = getService(platform);
         try {
-            return ResponseEntity.ok(service.getAccountData(username));
+            return ResponseEntity.ok(service.getAccountData(userId, username));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -46,40 +48,43 @@ public class SocialAnalyticsController {
 
     @GetMapping("/{platform}/search")
     public ResponseEntity<List<com.newcow.analytics.dto.ChannelSearchDto>> searchChannels(
+            @RequestHeader("X-User-Id") String userId,
             @PathVariable String platform,
             @RequestParam String q) {
         
         SocialMediaAnalyzeService service = getService(platform);
-        return ResponseEntity.ok(service.searchChannels(q));
+        return ResponseEntity.ok(service.searchChannels(userId, q));
     }
 
     @GetMapping("/{platform}/search-live")
     public ResponseEntity<List<com.newcow.analytics.dto.ChannelSearchDto>> searchLiveChannels(
+            @RequestHeader("X-User-Id") String userId,
             @PathVariable String platform,
             @RequestParam String q) {
         
         SocialMediaAnalyzeService service = getService(platform);
-        return ResponseEntity.ok(service.searchLiveChannels(q));
+        return ResponseEntity.ok(service.searchLiveChannels(userId, q));
     }
 
     @GetMapping("/recent")
-    public ResponseEntity<List<SocialAccountDataDto>> getRecentSearches() {
-        List<com.newcow.analytics.domain.SocialAccount> recentAccounts = accountRepository.findTop20ByOrderByUpdatedAtDesc();
+    public ResponseEntity<List<SocialAccountDataDto>> getRecentSearches(@RequestHeader("X-User-Id") String userId) {
+        List<com.newcow.analytics.domain.SocialAccount> recentAccounts = accountRepository.findTop20ByUserIdOrderByUpdatedAtDesc(userId);
         List<SocialAccountDataDto> result = recentAccounts.stream().map(acc -> {
             SocialMediaAnalyzeService service = getService(acc.getPlatform().toLowerCase());
-            return service.getAccountData(acc.getUsername());
+            return service.getAccountData(userId, acc.getUsername());
         }).collect(Collectors.toList());
         return ResponseEntity.ok(result);
     }
 
     @PostMapping("/account/{platform}/{username}/pin")
     public ResponseEntity<Void> togglePin(
+            @RequestHeader("X-User-Id") String userId,
             @PathVariable String platform,
             @PathVariable String username) {
         
         String cleanUsername = username.startsWith("@") ? username : "@" + username;
         com.newcow.analytics.domain.SocialAccount account = accountRepository
-                .findByUsernameAndPlatform(cleanUsername, platform.toUpperCase())
+                .findByUserIdAndUsernameAndPlatform(userId, cleanUsername, platform.toUpperCase())
                 .orElseThrow(() -> new RuntimeException("Account not found"));
         
         account.setPinned(!account.isPinned());
@@ -90,15 +95,16 @@ public class SocialAnalyticsController {
     @DeleteMapping("/account/{platform}/{username}")
     @Transactional
     public ResponseEntity<Void> deleteAccount(
+            @RequestHeader("X-User-Id") String userId,
             @PathVariable String platform,
             @PathVariable String username) {
         
         String cleanUsername = username.startsWith("@") ? username : "@" + username;
         com.newcow.analytics.domain.SocialAccount account = accountRepository
-                .findByUsernameAndPlatform(cleanUsername, platform.toUpperCase())
+                .findByUserIdAndUsernameAndPlatform(userId, cleanUsername, platform.toUpperCase())
                 .orElseThrow(() -> new RuntimeException("Account not found"));
         
-        postRepository.deleteByAccount(account);
+        postRepository.deleteByUserIdAndAccount(userId, account);
         accountRepository.delete(account);
         return ResponseEntity.ok().build();
     }

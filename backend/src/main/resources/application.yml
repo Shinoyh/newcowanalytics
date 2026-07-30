@@ -1,9 +1,9 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:newcow_db;DB_CLOSE_DELAY=-1;MODE=MySQL
-    username: sa
-    password: ""
-    driver-class-name: org.h2.Driver
+    url: jdbc:postgresql://ep-summer-river-azzuc8iz.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+    username: neondb_owner
+    password: npg_JhaFExI8czZ6
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
@@ -12,12 +12,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect
-        
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   sql:
     init:
@@ -28,11 +23,11 @@ app:
   social:
     instagram:
       # Currently mocked, you can set real values using ENV variables e.g. INSTAGRAM_ACCESS_TOKEN
-      access-token: ${INSTAGRAM_ACCESS_TOKEN:YOUR_INSTAGRAM_ACCESS_TOKEN}
-      account-id: "17841440826407138"
+      access-token: "${INSTAGRAM_ACCESS_TOKEN:EAATW2J46zmABSJYwYibjiubpaLC52ZAKIp8rdv4RMUIPNZAuZAJDZCIIKWg7kghwMAtaNrGqtm1nGGlgyeaL1p95ZCdrFQT2v4yZCMfAzEdo8ENULdQUsoPJYRDmLN1ZCZAUlZApKBcMeDzWlCuCw3xZALfwSo1D2BbDuLrY9Bw1kVnoyEVK9ZABcZB1jdBHFszTzuzN8utpC2jveYjawE2A1R4MZB7KN9YHVwqWuL61fPn5gdZB5iRktspewKWOZCBZATSSwB53LBFk4mD2Mv4d5gZDZD}"
+      account-id: "${INSTAGRAM_ACCOUNT_ID:17841440826407138}"
       api-version: "v20.0"
     youtube:
-      api-key: ${YOUTUBE_API_KEY:YOUR_YOUTUBE_API_KEY}
+      api-key: "${YOUTUBE_API_KEY:mock_key}"
   ai:
     gemini:
-      api-key: ${GEMINI_API_KEY:YOUR_GEMINI_API_KEY}
+      api-key: "${GEMINI_API_KEY:mock_key}"

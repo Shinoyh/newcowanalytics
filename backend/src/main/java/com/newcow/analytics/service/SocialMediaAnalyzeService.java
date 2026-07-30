@@ -8,26 +8,17 @@ public interface SocialMediaAnalyzeService {
      * @param username The username of the social media account.
      * @return SocialAccountDataDto containing the account and recent posts.
      */
-    SocialAccountDataDto analyzeAccount(String username);
+    SocialAccountDataDto analyzeAccount(String userId, String username);
     
-    /**
-     * Retrieves the existing data from the database without triggering an API call.
-     * @param username The username of the social media account.
-     * @return SocialAccountDataDto containing the account and recent posts.
-     */
-    SocialAccountDataDto getAccountData(String username);
+    SocialAccountDataDto getAccountData(String userId, String username);
 
-    /**
-     * Identifies the platform this service handles.
-     * @return the platform name (e.g., "INSTAGRAM", "YOUTUBE")
-     */
     String getPlatform();
     
-    default java.util.List<com.newcow.analytics.dto.ChannelSearchDto> searchChannels(String query) {
+    default java.util.List<com.newcow.analytics.dto.ChannelSearchDto> searchChannels(String userId, String query) {
         return java.util.Collections.emptyList();
     }
     
-    default java.util.List<com.newcow.analytics.dto.ChannelSearchDto> searchLiveChannels(String query) {
+    default java.util.List<com.newcow.analytics.dto.ChannelSearchDto> searchLiveChannels(String userId, String query) {
         return java.util.Collections.emptyList();
     }
 }

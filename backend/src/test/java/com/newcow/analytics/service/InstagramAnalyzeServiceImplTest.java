@@ -52,16 +52,16 @@ class InstagramAnalyzeServiceImplTest {
                 .build();
 
         // Repository 동작 모방
-        when(accountRepository.findByUsernameAndPlatform(targetUsername, "INSTAGRAM"))
+        when(accountRepository.findByUserIdAndUsernameAndPlatform("test-user-id", targetUsername, "INSTAGRAM"))
                 .thenReturn(Optional.of(mockAccount));
-        org.mockito.Mockito.lenient().when(postRepository.findByAccountAndPlatformPostId(any(), any()))
+        org.mockito.Mockito.lenient().when(postRepository.findByUserIdAndAccountAndPlatformPostId(any(), any(), any()))
                 .thenReturn(Optional.empty());
         org.mockito.Mockito.lenient().when(postRepository.save(any(SocialMediaPost.class)))
                 .thenAnswer(i -> i.getArguments()[0]);
 
         // When: 실제 Graph API 호출
         System.out.println("====== [TEST START] Calling Real Instagram API... ======");
-        SocialAccountDataDto result = service.analyzeAccount(targetUsername);
+        SocialAccountDataDto result = service.analyzeAccount("test-user-id", targetUsername);
 
         // Then: 응답 결과 검증
         assertNotNull(result);

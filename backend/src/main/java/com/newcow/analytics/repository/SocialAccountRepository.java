@@ -6,9 +6,9 @@ import java.util.Optional;
 import java.util.List;
 
 public interface SocialAccountRepository extends JpaRepository<SocialAccount, Long> {
-    Optional<SocialAccount> findByUsernameAndPlatform(String username, String platform);
+    Optional<SocialAccount> findByUserIdAndUsernameAndPlatform(String userId, String username, String platform);
     
-    List<SocialAccount> findByUsernameContainingIgnoreCaseAndPlatform(String username, String platform);
+    List<SocialAccount> findByUserIdAndUsernameContainingIgnoreCaseAndPlatform(String userId, String username, String platform);
     
-    List<SocialAccount> findTop20ByOrderByUpdatedAtDesc();
+    List<SocialAccount> findTop20ByUserIdOrderByUpdatedAtDesc(String userId);
 }

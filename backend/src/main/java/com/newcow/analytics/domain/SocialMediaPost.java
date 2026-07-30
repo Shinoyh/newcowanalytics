@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "social_media_post", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_account_post", columnNames = {"account_id", "platform_post_id"})
+        @UniqueConstraint(name = "uk_user_account_post", columnNames = {"user_id", "account_id", "platform_post_id"})
 })
 @Getter
 @Setter
@@ -21,6 +21,9 @@ public class SocialMediaPost {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "user_id", nullable = false)
+    private String userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)

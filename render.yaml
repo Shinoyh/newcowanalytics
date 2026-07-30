@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: newcow-backend
+    env: java
+    plan: free
+    buildCommand: "cd backend && chmod +x gradlew && ./gradlew build -x test"
+    startCommand: "cd backend && java -jar build/libs/*-SNAPSHOT.jar"
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # The database URL is configured in application.yml to use Neon DB
+      # If needed, you can override properties via env vars here

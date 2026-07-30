@@ -19,7 +19,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -42,7 +44,7 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
     }
 
     @Override
-    public SocialAccountDataDto analyzeAccount(String username) {
+    public SocialAccountDataDto analyzeAccount(String userId, String username) {
         // If the frontend passed a channelId (starts with UC and length 24)
         if (username != null && username.startsWith("UC") && username.length() == 24) {
             try {
@@ -64,8 +66,9 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
 
         String cleanUsername = username.startsWith("@") ? username : "@" + username;
 
-        SocialAccount account = accountRepository.findByUsernameAndPlatform(cleanUsername, "YOUTUBE")
+        SocialAccount account = accountRepository.findByUserIdAndUsernameAndPlatform(userId, cleanUsername, "YOUTUBE")
                 .orElse(SocialAccount.builder()
+                        .userId(userId)
                         .username(cleanUsername)
                         .platform("YOUTUBE")
                         .build());
@@ -120,6 +123,9 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
                 }
             }
 
+            // Clear previous channel AI analysis to force a new one upon data refresh
+            account.setAiAnalysisResult(null);
+
             // Ensure account is saved with updated timestamp
             account = accountRepository.save(account);
 
@@ -137,12 +143,12 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
                 JsonNode playlistRoot = objectMapper.readTree(playlistResponse.getBody());
 
                 List<String> videoIds = new ArrayList<>();
-                List<JsonNode> videoSnippets = new ArrayList<>();
+                Map<String, JsonNode> snippetMap = new HashMap<>();
 
                 for (JsonNode item : playlistRoot.path("items")) {
                     String videoId = item.path("snippet").path("resourceId").path("videoId").asText();
                     videoIds.add(videoId);
-                    videoSnippets.add(item.path("snippet"));
+                    snippetMap.put(videoId, item.path("snippet"));
                 }
 
                 if (videoIds.isEmpty()) {
@@ -159,9 +165,11 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
                 JsonNode statsItems = statsRoot.path("items");
                 for (int i = 0; i < statsItems.size(); i++) {
                     JsonNode statsItem = statsItems.get(i);
-                    JsonNode snippet = videoSnippets.get(i);
-
                     String videoId = statsItem.path("id").asText();
+                    JsonNode snippet = snippetMap.get(videoId);
+                    
+                    if (snippet == null) continue;
+
                     JsonNode stats = statsItem.path("statistics");
                     JsonNode contentDetails = statsItem.path("contentDetails");
 
@@ -183,7 +191,7 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
                     LocalDateTime timestamp = Instant.parse(publishedAtStr).atZone(ZoneId.systemDefault())
                             .toLocalDateTime();
 
-                    Optional<SocialMediaPost> existingPostOpt = postRepository.findByAccountAndPlatformPostId(account,
+                    Optional<SocialMediaPost> existingPostOpt = postRepository.findByUserIdAndAccountAndPlatformPostId(account.getUserId(), account,
                             videoId);
 
                     SocialMediaPost post;
@@ -196,6 +204,7 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
                         post.setVideoType(videoType);
                     } else {
                         post = SocialMediaPost.builder()
+                                .userId(account.getUserId())
                                 .account(account)
                                 .platformPostId(videoId)
                                 .platform("YOUTUBE")
@@ -224,7 +233,7 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
             postRepository.saveAll(newPosts);
 
             // Fetch all posts from DB for this account
-            List<SocialMediaPost> allPosts = postRepository.findByAccountOrderByTimestampDesc(account);
+            List<SocialMediaPost> allPosts = postRepository.findByUserIdAndAccountOrderByTimestampDesc(account.getUserId(), account);
             return mapToDto(account, allPosts);
 
         } catch (Exception e) {
@@ -234,19 +243,19 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
     }
 
     @Override
-    public SocialAccountDataDto getAccountData(String username) {
+    public SocialAccountDataDto getAccountData(String userId, String username) {
         String cleanUsername = username.startsWith("@") ? username : "@" + username;
-        SocialAccount account = accountRepository.findByUsernameAndPlatform(cleanUsername, "YOUTUBE")
+        SocialAccount account = accountRepository.findByUserIdAndUsernameAndPlatform(userId, cleanUsername, "YOUTUBE")
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
-        List<SocialMediaPost> posts = postRepository.findByAccountOrderByTimestampDesc(account);
+        List<SocialMediaPost> posts = postRepository.findByUserIdAndAccountOrderByTimestampDesc(userId, account);
         return mapToDto(account, posts);
     }
 
     @Override
-    public List<com.newcow.analytics.dto.ChannelSearchDto> searchChannels(String query) {
+    public List<com.newcow.analytics.dto.ChannelSearchDto> searchChannels(String userId, String query) {
         // Option B: Search from local DB only to save API quota
-        List<SocialAccount> accounts = accountRepository.findByUsernameContainingIgnoreCaseAndPlatform(query,
+        List<SocialAccount> accounts = accountRepository.findByUserIdAndUsernameContainingIgnoreCaseAndPlatform(userId, query,
                 "YOUTUBE");
         return accounts.stream().map(a -> com.newcow.analytics.dto.ChannelSearchDto.builder()
                 .username(a.getUsername().replace("@", ""))
@@ -256,7 +265,7 @@ public class YoutubeAnalyzeServiceImpl implements SocialMediaAnalyzeService {
     }
 
     @Override
-    public List<com.newcow.analytics.dto.ChannelSearchDto> searchLiveChannels(String query) {
+    public List<com.newcow.analytics.dto.ChannelSearchDto> searchLiveChannels(String userId, String query) {
         String searchUrl = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&maxResults=10&q="
                 + query + "&key=" + apiKey;
         try {
