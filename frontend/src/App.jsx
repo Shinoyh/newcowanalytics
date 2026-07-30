@@ -275,9 +275,15 @@ function App() {
                                       }
                                   } catch(e) {}
                               }
-                              if (typeof result === 'object' && result !== null) {
-                                  result._meta = { platform: data.platform, username: data.username };
+                              if (typeof result !== 'object' || result === null) {
+                                  result = {
+                                      growth_trend: "분석 오류",
+                                      analysis_summary: typeof result === 'string' ? result : "AI 응답 형식이 올바르지 않습니다.",
+                                      key_drivers: [],
+                                      strategic_advice: []
+                                  };
                               }
+                              result._meta = { platform: data.platform, username: data.username };
                               setChannelAiData(result);
                               setShowChannelAiModal(true);
                           } catch (error) {
@@ -415,9 +421,15 @@ function App() {
                             }
                         } catch(e) {}
                     }
-                    if (typeof result === 'object' && result !== null) {
-                        result._meta = channelAiData._meta;
+                    if (typeof result !== 'object' || result === null) {
+                        result = {
+                            growth_trend: "분석 오류",
+                            analysis_summary: typeof result === 'string' ? result : "AI 응답 형식이 올바르지 않습니다.",
+                            key_drivers: [],
+                            strategic_advice: []
+                        };
                     }
+                    result._meta = channelAiData._meta;
                     setChannelAiData(result);
                     setShowChannelAiModal(true);
                 } catch (error) {

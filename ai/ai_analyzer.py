@@ -25,6 +25,7 @@ def download_short_video(video_id):
     if not os.path.exists(out_file):
         cmd = [
             "yt-dlp", 
+            "--no-interactive",
             "--extractor-args", "youtube:player_client=ios,android",
             "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "--merge-output-format", "mp4",
@@ -35,7 +36,7 @@ def download_short_video(video_id):
         if cookies:
             cmd.extend(["--cookies", cookies])
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            subprocess.run(cmd, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
             raise Exception(f"yt-dlp failed: {e.stderr}")
     return out_file
@@ -46,6 +47,7 @@ def download_long_video_assets(video_id):
     if not os.path.exists(intro_file):
         cmd_intro = [
             "yt-dlp",
+            "--no-interactive",
             "--extractor-args", "youtube:player_client=ios,android",
             "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "--download-sections", "*00:00:00-00:02:00",
@@ -57,7 +59,7 @@ def download_long_video_assets(video_id):
         if cookies:
             cmd_intro.extend(["--cookies", cookies])
         try:
-            subprocess.run(cmd_intro, check=True, capture_output=True, text=True)
+            subprocess.run(cmd_intro, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
             raise Exception(f"yt-dlp intro download failed: {e.stderr}")
         
@@ -66,6 +68,7 @@ def download_long_video_assets(video_id):
     if not os.path.exists(audio_file):
         cmd_audio = [
             "yt-dlp",
+            "--no-interactive",
             "--extractor-args", "youtube:player_client=ios,android",
             "-f", "bestaudio/best",
             "-x", "--audio-format", "mp3",
@@ -76,7 +79,7 @@ def download_long_video_assets(video_id):
         if cookies:
             cmd_audio.extend(["--cookies", cookies])
         try:
-            subprocess.run(cmd_audio, check=True, capture_output=True, text=True)
+            subprocess.run(cmd_audio, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
             raise Exception(f"yt-dlp audio download failed: {e.stderr}")
             
@@ -216,15 +219,15 @@ Under NO CIRCUMSTANCES should you output the placeholder text from the JSON SCHE
 
 ### OUTPUT JSON SCHEMA ###
 {
-  "growth_trend": "상승세 / 하락세 / 정체기 (한국어)",
-  "analysis_summary": "최근 50~100개 포스트 데이터를 분석하여 도출한 채널 성장/하락의 핵심 원인 3-4문장 요약 (한국어)",
+  "growth_trend": "String. Must be one of: 상승세, 하락세, 정체기",
+  "analysis_summary": "String. 3-4 sentence summary in Korean explaining the reason for the trend.",
   "key_drivers": [
-    "채널 성장을 견인하거나 악화시킨 주요 콘텐츠 주제 또는 요인 1 (한국어)",
-    "요인 2 (한국어)"
+    "String. Factor 1 in Korean",
+    "String. Factor 2 in Korean"
   ],
   "strategic_advice": [
-    "앞으로 채널 성장을 극대화하기 위한 구체적인 전략 제안 1 (한국어)",
-    "구체적인 전략 제안 2 (한국어)"
+    "String. Advice 1 in Korean",
+    "String. Advice 2 in Korean"
   ]
 }""",
         temperature=0.7,
