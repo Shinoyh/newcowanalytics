@@ -31,7 +31,7 @@ app:
       account-id: "${INSTAGRAM_ACCOUNT_ID:17841440826407138}"
       api-version: "v20.0"
     youtube:
-      api-key: "${YOUTUBE_API_KEY:mock_key}"
+      api-key: "${YOUTUBE_API_KEY:YOUR_YOUTUBE_API_KEY}"
   ai:
     gemini:
-      api-key: "${GEMINI_API_KEY:mock_key}"
+      api-key: "${GEMINI_API_KEY:YOUR_GEMINI_API_KEY}"

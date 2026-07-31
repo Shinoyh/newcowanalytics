@@ -179,7 +179,18 @@ IMPORTANT: If you use double quotes inside a string value, you MUST escape them 
                 response = client.models.generate_content(model='gemini-3.5-flash', contents=[uploaded_files[0], uploaded_files[1], prompt], config=config)
 
             clean_json = response.text.replace('```json', '').replace('```', '').strip()
-            print(clean_json)
+            
+            # Find the first '{' and use raw_decode to parse exactly one JSON object
+            idx = clean_json.find('{')
+            if idx != -1:
+                clean_json = clean_json[idx:]
+            
+            try:
+                parsed, _ = json.JSONDecoder().raw_decode(clean_json)
+                return parsed
+            except Exception as e:
+                print(f"[ERROR] JSON Parse failed. clean_json was:\n{clean_json}\n", file=sys.stderr)
+                raise
         
     finally:
         # Cleanup uploaded files from Gemini
@@ -234,7 +245,16 @@ Under NO CIRCUMSTANCES should you output the placeholder text from the JSON SCHE
     prompt = f"Here is the recent posts metadata for the channel:\n{metadata_json_str}\n\nPlease analyze the channel trend based on this data."
     response = client.models.generate_content(model='gemini-3.5-flash', contents=prompt, config=config)
     clean_json = response.text.replace('```json', '').replace('```', '').strip()
-    print(clean_json)
+    idx = clean_json.find('{')
+    if idx != -1:
+        clean_json = clean_json[idx:]
+        
+    try:
+        parsed, _ = json.JSONDecoder().raw_decode(clean_json)
+        return parsed
+    except Exception as e:
+        print(f"[ERROR] JSON Parse failed in channel. clean_json was:\n{clean_json}\n", file=sys.stderr)
+        raise Exception(f"Failed to parse Gemini response: {clean_json}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -108,8 +108,8 @@ const HomeDashboard = ({ onSelectAccount, platform, onAiAnalysisRequest }) => {
                     if (rawPosts.length >= 2) {
                         const mid = Math.floor(rawPosts.length / 2);
                         // rawPosts is New -> Old. So recent is 0..mid, past is mid..end
-                        const recentHalf = rawPosts.slice(0, mid).map(p => p.engagement).sort((a,b) => a - b);
-                        const pastHalf = rawPosts.slice(mid).map(p => p.engagement).sort((a,b) => a - b);
+                        const recentHalf = rawPosts.slice(0, mid).map(p => p.viewCount || p.engagement).sort((a,b) => a - b);
+                        const pastHalf = rawPosts.slice(mid).map(p => p.viewCount || p.engagement).sort((a,b) => a - b);
                         
                         pastMedian = pastHalf.length % 2 === 0 
                             ? (pastHalf[pastHalf.length/2 - 1] + pastHalf[pastHalf.length/2]) / 2 
@@ -126,7 +126,7 @@ const HomeDashboard = ({ onSelectAccount, platform, onAiAnalysisRequest }) => {
                         const isPast = i < midIndex;
                         return {
                             name: `Post ${i}`,
-                            engagement: p.engagement,
+                            engagement: p.viewCount || p.engagement, // Using viewCount primarily for the sparkline
                             pastMedianLine: isPast ? pastMedian : null,
                             recentMedianLine: !isPast ? recentMedian : null
                         };

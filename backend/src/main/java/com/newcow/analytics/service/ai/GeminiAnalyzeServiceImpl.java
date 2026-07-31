@@ -8,14 +8,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.ArrayList;
-import java.util.Collections;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +26,11 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
     @Value("${app.ai.gemini.api-key}")
     private String apiKey;
 
+    @Value("${ai.service.url:http://localhost:8000}")
+    private String aiServiceUrl;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate restTemplate = new RestTemplate();
 
     @Override
     public String analyzeVideo(SocialMediaPost post) {
@@ -43,46 +48,29 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
             metadata.put("publishedAt", post.getTimestamp() != null ? post.getTimestamp().toString() : "");
 
             String metadataJson = objectMapper.writeValueAsString(metadata);
-            String base64Metadata = java.util.Base64.getEncoder().encodeToString(metadataJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             
-            // Call python script
-            ProcessBuilder pb = new ProcessBuilder(
-                    "python", "ai_analyzer.py",
-                    "--api_key", apiKey,
-                    "--mode", "video",
-                    "--video_id", post.getPlatformPostId(),
-                    "--type", post.getVideoType() != null ? post.getVideoType().toLowerCase() : "long",
-                    "--metadata_base64", base64Metadata,
-                    "--step", step
-            );
-            pb.directory(new java.io.File("../ai"));
+            // HTTP Request to Python AI server
+            String url = aiServiceUrl + "/analyze/video";
+            Map<String, String> requestBody = new HashMap<>();
+            requestBody.put("api_key", apiKey);
+            requestBody.put("video_id", post.getPlatformPostId());
+            requestBody.put("type", post.getVideoType() != null ? post.getVideoType().toLowerCase() : "long");
+            requestBody.put("metadata_json_str", metadataJson);
+            requestBody.put("step", step);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
+
+            log.info("[Python AI] Sending video analysis request to {}", url);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    // Python script prints status to stderr (not captured if redirectErrorStream is false, 
-                    // but we set it true, so we need to filter JSON)
-                    if (line.trim().startsWith("{") || output.length() > 0) {
-                        output.append(line).append("\n");
-                    } else {
-                        log.info("[Python AI] {}", line);
-                    }
-                }
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException("AI Analysis failed with HTTP " + response.getStatusCode());
             }
             
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                log.error("Python script failed with exit code {}", exitCode);
-                throw new RuntimeException("AI Analysis failed");
-            }
-            
-            String rawOutput = output.toString().trim();
-            // Remove any trailing markdown backticks that might have been included
-            if (rawOutput.endsWith("```")) {
+            String rawOutput = response.getBody();
+            if (rawOutput != null && rawOutput.endsWith("```")) {
                 rawOutput = rawOutput.substring(0, rawOutput.length() - 3).trim();
             }
             return rawOutput;
@@ -120,51 +108,47 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
                 int mid = recentPosts.size() / 2;
                 List<SocialMediaPost> recentHalf = recentPosts.subList(0, mid);
                 List<SocialMediaPost> pastHalf = recentPosts.subList(mid, recentPosts.size());
-        
-                double recentMedian = calculateMedian(recentHalf);
-                double pastMedian = calculateMedian(pastHalf);
-        
-                if (pastMedian != 0) {
-                    growthRate = ((recentMedian - pastMedian) / pastMedian) * 100.0;
+
+                double recentViewsMedian = calculateMedian(recentHalf, true);
+                double pastViewsMedian = calculateMedian(pastHalf, true);
+                double viewsGrowth = 0.0;
+                if (pastViewsMedian > 0) {
+                    viewsGrowth = ((recentViewsMedian - pastViewsMedian) / pastViewsMedian) * 100.0;
                 }
+
+                double recentEngMedian = calculateMedian(recentHalf, false);
+                double pastEngMedian = calculateMedian(pastHalf, false);
+                double engGrowth = 0.0;
+                if (pastEngMedian > 0) {
+                    engGrowth = ((recentEngMedian - pastEngMedian) / pastEngMedian) * 100.0;
+                }
+                
+                growthRate = (viewsGrowth * 0.7) + (engGrowth * 0.3);
             }
             
             payload.put("recentPosts", postsMeta);
             payload.put("calculatedGrowthRate", growthRate);
             String metadataJson = objectMapper.writeValueAsString(payload);
-            String base64Metadata = java.util.Base64.getEncoder().encodeToString(metadataJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             
-            ProcessBuilder pb = new ProcessBuilder(
-                    "python", "ai_analyzer.py",
-                    "--api_key", apiKey,
-                    "--mode", "channel",
-                    "--metadata_base64", base64Metadata
-            );
-            pb.directory(new java.io.File("../ai"));
+            // HTTP Request to Python AI server
+            String url = aiServiceUrl + "/analyze/channel";
+            Map<String, String> requestBody = new HashMap<>();
+            requestBody.put("api_key", apiKey);
+            requestBody.put("metadata_json_str", metadataJson);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
+
+            log.info("[Python AI] Sending channel analysis request to {}", url);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.trim().startsWith("{") || output.length() > 0) {
-                        output.append(line).append("\n");
-                    } else {
-                        log.info("[Python AI] {}", line);
-                    }
-                }
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException("AI Analysis failed with HTTP " + response.getStatusCode());
             }
             
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                log.error("Python script failed with exit code {}", exitCode);
-                throw new RuntimeException("AI Analysis failed");
-            }
-            
-            String rawOutput = output.toString().trim();
-            if (rawOutput.endsWith("```")) {
+            String rawOutput = response.getBody();
+            if (rawOutput != null && rawOutput.endsWith("```")) {
                 rawOutput = rawOutput.substring(0, rawOutput.length() - 3).trim();
             }
             return rawOutput;
@@ -175,10 +159,16 @@ public class GeminiAnalyzeServiceImpl implements AiAnalysisService {
         }
     }
 
-    private double calculateMedian(List<SocialMediaPost> halfPosts) {
+    private double calculateMedian(List<SocialMediaPost> halfPosts, boolean useViews) {
         if (halfPosts.isEmpty()) return 0.0;
-        List<Integer> sorted = halfPosts.stream()
-                .map(p -> p.getEngagement() != null ? p.getEngagement() : 0)
+        List<Double> sorted = halfPosts.stream()
+                .map(p -> {
+                    if (useViews) {
+                        return p.getViewCount() != null ? p.getViewCount().doubleValue() : 0.0;
+                    } else {
+                        return p.getEngagement() != null ? p.getEngagement().doubleValue() : 0.0;
+                    }
+                })
                 .sorted()
                 .collect(Collectors.toList());
         int size = sorted.size();

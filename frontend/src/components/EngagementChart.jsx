@@ -51,10 +51,11 @@ const EngagementChart = ({ data, onChartClick }) => {
             }
 
             if (!groups[key]) {
-                groups[key] = { label, fullDate, totalEngagement: 0, totalLikes: 0, totalComments: 0, count: 0, posts: [] };
+                groups[key] = { label, fullDate, totalEngagement: 0, totalViews: 0, totalLikes: 0, totalComments: 0, count: 0, posts: [] };
             }
             
             groups[key].totalEngagement += post.engagement;
+            groups[key].totalViews += (post.viewCount || 0);
             groups[key].totalLikes += post.likeCount;
             groups[key].totalComments += post.commentsCount;
             groups[key].count += 1;
@@ -65,6 +66,7 @@ const EngagementChart = ({ data, onChartClick }) => {
         return Object.values(groups).map(g => ({
             label: g.label,
             fullDate: g.fullDate,
+            views: Math.round(g.totalViews / g.count),
             engagement: Math.round(g.totalEngagement / g.count),
             likes: Math.round(g.totalLikes / g.count),
             comments: Math.round(g.totalComments / g.count),
@@ -91,8 +93,9 @@ const EngagementChart = ({ data, onChartClick }) => {
                         Posts in period: {pointData.count}
                     </p>
                     <p style={{ margin: '8px 0', fontSize: '1.2rem', color: '#3b82f6' }}>
-                        {viewMode === 'daily' ? 'Avg Engagement:' : 'Avg Engagement:'} <strong>{pointData.engagement.toLocaleString()}</strong>
+                        Avg Views: <strong>{pointData.views.toLocaleString()}</strong>
                     </p>
+                    <p style={{ margin: '4px 0', fontSize: '0.9rem', color: '#10b981' }}>Avg Engagement: {pointData.engagement.toLocaleString()}</p>
                     <p style={{ margin: '4px 0', fontSize: '0.85rem' }}>Likes: {pointData.likes.toLocaleString()}</p>
                     <p style={{ margin: '4px 0', fontSize: '0.85rem' }}>Comments: {pointData.comments.toLocaleString()}</p>
                 </div>
@@ -104,7 +107,7 @@ const EngagementChart = ({ data, onChartClick }) => {
     return (
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div className="chart-header">
-                <h3 className="stat-label">Engagement Trend</h3>
+                <h3 className="stat-label">Performance Trend (Views)</h3>
                 <div className="chart-controls">
                     <div className="date-picker-group">
                         <input 
@@ -179,7 +182,7 @@ const EngagementChart = ({ data, onChartClick }) => {
                                 />
                                 <Area 
                                     type="monotone" 
-                                    dataKey="engagement" 
+                                    dataKey="views" 
                                     stroke="#3b82f6" 
                                     strokeWidth={3}
                                     fillOpacity={1} 
