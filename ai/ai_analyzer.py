@@ -50,6 +50,7 @@ def download_short_video(video_id):
         cmd = [
             "yt-dlp", 
             "--no-warnings",
+            "--extractor-args", "youtube:player_client=tv",
             "-S", "res:480",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
@@ -76,6 +77,7 @@ def download_long_video_assets(video_id):
         cmd_intro = [
             "yt-dlp",
             "--no-warnings",
+            "--extractor-args", "youtube:player_client=tv",
             "-S", "res:480",
             "--download-sections", "*00:00:00-00:02:00",
             "--merge-output-format", "mp4",
@@ -101,6 +103,7 @@ def download_long_video_assets(video_id):
         cmd_audio = [
             "yt-dlp",
             "--no-warnings",
+            "--extractor-args", "youtube:player_client=tv",
             "-x", "--audio-format", "mp3",
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", audio_file
