@@ -51,7 +51,6 @@ def download_short_video(video_id):
             "yt-dlp", 
             "--no-warnings",
             "-S", "res:480",
-            "-f", "b/best",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", out_file
@@ -78,7 +77,6 @@ def download_long_video_assets(video_id):
             "yt-dlp",
             "--no-warnings",
             "-S", "res:480",
-            "-f", "b/best",
             "--download-sections", "*00:00:00-00:02:00",
             "--merge-output-format", "mp4",
             f"https://www.youtube.com/watch?v={video_id}",
@@ -103,7 +101,6 @@ def download_long_video_assets(video_id):
         cmd_audio = [
             "yt-dlp",
             "--no-warnings",
-            "-f", "bestaudio/best",
             "-x", "--audio-format", "mp3",
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", audio_file
