@@ -26,6 +26,23 @@ def get_cookies_file():
             return path
     return None
 
+def handle_ytdlp_error(e, prefix=""):
+    if isinstance(e, subprocess.TimeoutExpired):
+        raise Exception(f"{prefix} Download Timeout: The process took too long and was killed.")
+    
+    stderr_lower = e.stderr.lower() if e.stderr else ""
+    
+    if "sign in to confirm" in stderr_lower or "video unavailable" in stderr_lower or "http error 403" in stderr_lower or "cookie" in stderr_lower:
+        raise Exception(f"{prefix} Cookie Expired or Blocked by YouTube: {e.stderr}")
+        
+    if "timeout" in stderr_lower or "read time out" in stderr_lower:
+        raise Exception(f"{prefix} Download Timeout (Network): {e.stderr}")
+        
+    if e.returncode == -9:
+        raise Exception(f"{prefix} Out of Memory (SIGKILL): Process was killed by OS.")
+        
+    raise Exception(f"{prefix} yt-dlp failed: {e.stderr}")
+
 def download_short_video(video_id):
     # Download full video for shorts
     out_file = f"{video_id}_short.mp4"
@@ -33,6 +50,7 @@ def download_short_video(video_id):
         cmd = [
             "yt-dlp", 
             "--no-warnings",
+            "--no-interactive",
             "-S", "res:480",
             "-f", "b/best",
             "--merge-output-format", "mp4",
@@ -45,10 +63,12 @@ def download_short_video(video_id):
         
         print(f"[INFO] [Short] Starting yt-dlp download for {video_id}...", flush=True)
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+            subprocess.run(cmd, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=600)
             print(f"[INFO] [Short] Download completed successfully.", flush=True)
+        except subprocess.TimeoutExpired as e:
+            handle_ytdlp_error(e, "[Short]")
         except subprocess.CalledProcessError as e:
-            raise Exception(f"yt-dlp failed: {e.stderr}")
+            handle_ytdlp_error(e, "[Short]")
     return out_file
 
 def download_long_video_assets(video_id):
@@ -58,6 +78,7 @@ def download_long_video_assets(video_id):
         cmd_intro = [
             "yt-dlp",
             "--no-warnings",
+            "--no-interactive",
             "-S", "res:480",
             "-f", "b/best",
             "--download-sections", "*00:00:00-00:02:00",
@@ -71,10 +92,12 @@ def download_long_video_assets(video_id):
         
         print(f"[INFO] [Long-Intro] Starting yt-dlp download for {video_id}...", flush=True)
         try:
-            subprocess.run(cmd_intro, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+            subprocess.run(cmd_intro, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=600)
             print(f"[INFO] [Long-Intro] Download completed successfully.", flush=True)
+        except subprocess.TimeoutExpired as e:
+            handle_ytdlp_error(e, "[Long-Intro]")
         except subprocess.CalledProcessError as e:
-            raise Exception(f"yt-dlp intro download failed: {e.stderr}")
+            handle_ytdlp_error(e, "[Long-Intro]")
         
     # Download full audio
     audio_file = f"{video_id}_full.mp3"
@@ -82,6 +105,7 @@ def download_long_video_assets(video_id):
         cmd_audio = [
             "yt-dlp",
             "--no-warnings",
+            "--no-interactive",
             "-f", "bestaudio/best",
             "-x", "--audio-format", "mp3",
             f"https://www.youtube.com/watch?v={video_id}",
@@ -93,10 +117,12 @@ def download_long_video_assets(video_id):
         
         print(f"[INFO] [Long-Audio] Starting yt-dlp download for {video_id}...", flush=True)
         try:
-            subprocess.run(cmd_audio, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+            subprocess.run(cmd_audio, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=600)
             print(f"[INFO] [Long-Audio] Download completed successfully.", flush=True)
+        except subprocess.TimeoutExpired as e:
+            handle_ytdlp_error(e, "[Long-Audio]")
         except subprocess.CalledProcessError as e:
-            raise Exception(f"yt-dlp audio download failed: {e.stderr}")
+            handle_ytdlp_error(e, "[Long-Audio]")
             
     return intro_file, audio_file
 
