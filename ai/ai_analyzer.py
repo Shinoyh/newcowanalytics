@@ -7,8 +7,12 @@ from google import genai
 from google.genai import types
 import argparse
 import base64
+from pytubefix import YouTube
 
 import shutil
+
+def handle_pytubefix_error(e, prefix=""):
+    raise Exception(f"{prefix} pytubefix failed: {e}")
 
 def get_cookies_file():
     paths = [
@@ -26,100 +30,75 @@ def get_cookies_file():
             return path
     return None
 
-def handle_ytdlp_error(e, prefix=""):
-    if isinstance(e, subprocess.TimeoutExpired):
-        raise Exception(f"{prefix} Download Timeout: The process took too long and was killed.")
-    
-    stderr_lower = e.stderr.lower() if e.stderr else ""
-    
-    if "sign in to confirm" in stderr_lower or "video unavailable" in stderr_lower or "http error 403" in stderr_lower or "cookie" in stderr_lower:
-        raise Exception(f"{prefix} Cookie Expired or Blocked by YouTube: {e.stderr}")
-        
-    if "timeout" in stderr_lower or "read time out" in stderr_lower:
-        raise Exception(f"{prefix} Download Timeout (Network): {e.stderr}")
-        
-    if e.returncode == -9:
-        raise Exception(f"{prefix} Out of Memory (SIGKILL): Process was killed by OS.")
-        
-    raise Exception(f"{prefix} yt-dlp failed: {e.stderr}")
-
 def download_short_video(video_id):
-    # Download full video for shorts
     out_file = f"{video_id}_short.mp4"
     if not os.path.exists(out_file):
-        cmd = [
-            "yt-dlp", 
-            "--no-warnings",
-            "--extractor-args", "youtube:player_client=tv",
-            "-S", "res:480",
-            "--merge-output-format", "mp4",
-            f"https://www.youtube.com/watch?v={video_id}",
-            "-o", out_file
-        ]
-        cookies = get_cookies_file()
-        if cookies:
-            cmd.extend(["--cookies", cookies])
-        
-        print(f"[INFO] [Short] Starting yt-dlp download for {video_id}...", flush=True)
+        tmp_v = f"{video_id}_tmp_v.mp4"
+        tmp_a = f"{video_id}_tmp_a.mp4"
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=600)
-            print(f"[INFO] [Short] Download completed successfully.", flush=True)
-        except subprocess.TimeoutExpired as e:
-            handle_ytdlp_error(e, "[Short]")
-        except subprocess.CalledProcessError as e:
-            handle_ytdlp_error(e, "[Short]")
+            print(f"[INFO] [Short] Starting pytubefix download for {video_id}...", flush=True)
+            yt = YouTube(f"https://www.youtube.com/watch?v={video_id}", client='WEB')
+            video = yt.streams.filter(adaptive=True, file_extension='mp4', only_video=True).first()
+            audio = yt.streams.get_audio_only()
+            if not video or not audio:
+                raise Exception("Missing adaptive video or audio streams")
+            video.download(filename=tmp_v)
+            audio.download(filename=tmp_a)
+            print(f"[INFO] [Short] Merging video and audio using FFmpeg...", flush=True)
+            cmd = ["ffmpeg", "-y", "-i", tmp_v, "-i", tmp_a, "-c:v", "copy", "-c:a", "aac", out_file]
+            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
+            print(f"[INFO] [Short] Download and merge completed successfully.", flush=True)
+        except Exception as e:
+            handle_pytubefix_error(e, "[Short]")
+        finally:
+            if os.path.exists(tmp_v): os.remove(tmp_v)
+            if os.path.exists(tmp_a): os.remove(tmp_a)
     return out_file
 
 def download_long_video_assets(video_id):
-    # Download intro video (first 2 minutes)
     intro_file = f"{video_id}_intro.mp4"
-    if not os.path.exists(intro_file):
-        cmd_intro = [
-            "yt-dlp",
-            "--no-warnings",
-            "--extractor-args", "youtube:player_client=tv",
-            "-S", "res:480",
-            "--download-sections", "*00:00:00-00:02:00",
-            "--merge-output-format", "mp4",
-            f"https://www.youtube.com/watch?v={video_id}",
-            "-o", intro_file
-        ]
-        cookies = get_cookies_file()
-        if cookies:
-            cmd_intro.extend(["--cookies", cookies])
-        
-        print(f"[INFO] [Long-Intro] Starting yt-dlp download for {video_id}...", flush=True)
-        try:
-            subprocess.run(cmd_intro, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=600)
-            print(f"[INFO] [Long-Intro] Download completed successfully.", flush=True)
-        except subprocess.TimeoutExpired as e:
-            handle_ytdlp_error(e, "[Long-Intro]")
-        except subprocess.CalledProcessError as e:
-            handle_ytdlp_error(e, "[Long-Intro]")
-        
-    # Download full audio
     audio_file = f"{video_id}_full.mp3"
-    if not os.path.exists(audio_file):
-        cmd_audio = [
-            "yt-dlp",
-            "--no-warnings",
-            "--extractor-args", "youtube:player_client=tv",
-            "-x", "--audio-format", "mp3",
-            f"https://www.youtube.com/watch?v={video_id}",
-            "-o", audio_file
-        ]
-        cookies = get_cookies_file()
-        if cookies:
-            cmd_audio.extend(["--cookies", cookies])
+    
+    yt = None
+    try:
+        yt = YouTube(f"https://www.youtube.com/watch?v={video_id}", client='WEB')
+    except Exception as e:
+        handle_pytubefix_error(e, "[Long-Init]")
         
-        print(f"[INFO] [Long-Audio] Starting yt-dlp download for {video_id}...", flush=True)
+    if not os.path.exists(intro_file):
+        tmp_v = f"{video_id}_tmp_v.mp4"
+        tmp_a = f"{video_id}_tmp_a.mp4"
         try:
-            subprocess.run(cmd_audio, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=600)
+            print(f"[INFO] [Long-Intro] Starting pytubefix download for {video_id}...", flush=True)
+            video = yt.streams.filter(adaptive=True, file_extension='mp4', only_video=True).first()
+            audio = yt.streams.get_audio_only()
+            if not video or not audio:
+                raise Exception("Missing adaptive video or audio streams")
+            
+            video.download(filename=tmp_v)
+            audio.download(filename=tmp_a)
+            
+            # Trim using FFmpeg (merge and trim first 2 minutes)
+            print(f"[INFO] [Long-Intro] Merging and trimming first 2 minutes using FFmpeg...", flush=True)
+            cmd = ["ffmpeg", "-y", "-i", tmp_v, "-i", tmp_a, "-t", "00:02:00", "-c:v", "copy", "-c:a", "aac", intro_file]
+            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=120)
+            print(f"[INFO] [Long-Intro] Trimming completed successfully.", flush=True)
+        except Exception as e:
+            handle_pytubefix_error(e, "[Long-Intro]")
+        finally:
+            if os.path.exists(tmp_v): os.remove(tmp_v)
+            if os.path.exists(tmp_a): os.remove(tmp_a)
+            
+    if not os.path.exists(audio_file):
+        try:
+            print(f"[INFO] [Long-Audio] Starting pytubefix audio download for {video_id}...", flush=True)
+            audio = yt.streams.get_audio_only()
+            if not audio:
+                raise Exception("No audio stream found")
+            audio.download(filename=audio_file)
             print(f"[INFO] [Long-Audio] Download completed successfully.", flush=True)
-        except subprocess.TimeoutExpired as e:
-            handle_ytdlp_error(e, "[Long-Audio]")
-        except subprocess.CalledProcessError as e:
-            handle_ytdlp_error(e, "[Long-Audio]")
+        except Exception as e:
+            handle_pytubefix_error(e, "[Long-Audio]")
             
     return intro_file, audio_file
 
