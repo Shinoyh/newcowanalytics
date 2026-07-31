@@ -22,7 +22,7 @@ COPY backend/src src
 RUN ./gradlew build -x test --no-daemon
 
 # Run stage
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:17-jre-noble
 WORKDIR /app
 
 # Install Python, pip, and ffmpeg
@@ -31,7 +31,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies
-RUN pip3 install google-genai yt-dlp
+RUN pip3 install --break-system-packages google-genai yt-dlp
 
 # Copy the ai directory
 COPY ai /ai
