@@ -25,17 +25,6 @@ RUN ./gradlew build -x test --no-daemon
 FROM eclipse-temurin:17-jre-noble
 WORKDIR /app
 
-# Install Python, pip, and ffmpeg
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip python-is-python3 ffmpeg && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install python dependencies
-RUN pip3 install --break-system-packages google-genai yt-dlp
-
-# Copy the ai directory
-COPY ai /ai
-
 # Copy the built jar from the build stage
 COPY --from=build /app/backend/build/libs/*-SNAPSHOT.jar app.jar
 

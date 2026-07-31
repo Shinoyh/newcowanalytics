@@ -202,8 +202,7 @@ IMPORTANT: If you use double quotes inside a string value, you MUST escape them 
             print(f"[INFO] Phase 1 Completed.", flush=True)
             
             if step == "download":
-                print(json.dumps({"status": "downloaded"}))
-                return
+                return {"status": "downloaded"}
 
         if step == "analyze" or step == "all":
             print(f"[INFO] Phase 2: Uploading files to Gemini API...", flush=True)
@@ -237,7 +236,7 @@ IMPORTANT: If you use double quotes inside a string value, you MUST escape them 
                 print(f"[INFO] Phase 3 Completed. AI Response received.", flush=True)
 
             clean_json = response.text.replace('```json', '').replace('```', '').strip()
-            print(clean_json)
+            return json.loads(clean_json, strict=False)
         
     finally:
         # Cleanup uploaded files from Gemini
@@ -296,9 +295,9 @@ Under NO CIRCUMSTANCES should you output the placeholder text from the JSON SCHE
     clean_json = response.text.replace('```json', '').replace('```', '').strip()
     try:
         parsed = json.loads(clean_json, strict=False)
-        print(json.dumps(parsed, ensure_ascii=False))
+        return parsed
     except Exception as e:
-        print(clean_json)
+        raise Exception(f"Failed to parse Gemini response: {clean_json}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -318,9 +317,11 @@ if __name__ == "__main__":
             if not args.video_id or not args.type:
                 print('{"error": "video_id and type are required for video mode"}')
                 sys.exit(0)
-            analyze_video(args.api_key, args.video_id, args.type, metadata_json_str, args.step)
+            res = analyze_video(args.api_key, args.video_id, args.type, metadata_json_str, args.step)
+            print(json.dumps(res, ensure_ascii=False))
         elif args.mode == "channel":
-            analyze_channel(args.api_key, metadata_json_str)
+            res = analyze_channel(args.api_key, metadata_json_str)
+            print(json.dumps(res, ensure_ascii=False))
     except Exception as e:
         print(json.dumps({"error": str(e)}))
         sys.exit(0)
